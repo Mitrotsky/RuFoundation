@@ -61,11 +61,7 @@ fn try_consume_fn<'p, 'r, 't>(
     )?;
 
     // Isolate ID if requested
-    let name = if parser.settings().isolate_user_ids {
-        Cow::Owned(isolate_ids(name))
-    } else {
-        cow!(name)
-    };
+    let name = cow!(name);
 
     // A standalone anchor is structural, so it should not leave a visible <br>
     // or get wrapped in an otherwise empty paragraph.
