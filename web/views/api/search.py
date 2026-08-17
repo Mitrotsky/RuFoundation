@@ -24,7 +24,8 @@ class SearchView(APIView):
         for result in results:
             article = result['article'].article
             rating, votes, popularity, mode = articles.get_rating(article)
-            authors = [render_user_to_json(author) for author in article.authors.all()]
+            authors = list(article.authors.all())
+            authors = [render_user_to_json(author) for author in authors] if authors else [render_user_to_json(None)]
             output_results.append({
                 'uid': article.id,
                 'pageId': article.full_name,
