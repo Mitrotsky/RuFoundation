@@ -9,6 +9,7 @@ import useConstCallback from '../util/const-callback'
 import Loader from '../util/loader'
 import { removeMessage, showPreviewMessage } from '../util/wikidot-message'
 import WikidotModal from '../util/wikidot-modal'
+import EditorToolbarPanel from '~components/editor-toolbar-panel'
 
 interface Props {
   pageId: string
@@ -123,6 +124,8 @@ const ArticleEditor: React.FC<Props> = ({
 
   const editorRef = useRef(null)
   const monacoRef = useRef(null)
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const monacoOptions: editor.IStandaloneEditorConstructionOptions = {
     wordWrap: 'on',
@@ -358,7 +361,7 @@ const ArticleEditor: React.FC<Props> = ({
           </tbody>
         </table>
         {/* This is not supported right now but we have to add empty div for BHL */}
-        <div id="wd-editor-toolbar-panel" className="wd-editor-toolbar-panel" />
+        <EditorToolbarPanel textareaRef={textareaRef} />
         <div className={`editor-area ${loading ? 'loading' : ''}`}>
           {!useAdvancedEditor && (
             <textarea
@@ -370,6 +373,7 @@ const ArticleEditor: React.FC<Props> = ({
               cols={60}
               style={{ width: '95%' }}
               disabled={loading || saving}
+              ref={textareaRef}
             />
           )}
           {useAdvancedEditor && (
