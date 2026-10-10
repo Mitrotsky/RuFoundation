@@ -1,28 +1,44 @@
-import React from "react"
+import React, { useLayoutEffect, useRef } from 'react'
 import { useCallback } from 'react'
 
 
 interface EditorToolbarPanelProps {
   readonly textareaRef: React.RefObject<HTMLTextAreaElement>,
+  onSourceChange: (text: string) => void,
 }
 
 
-const EditorToolbarPanel: React.FC<EditorToolbarPanelProps> = ({ textareaRef }) => {
+interface TextSelection {
+  start: number,
+  end: number,
+}
+
+
+const EditorToolbarPanel: React.FC<EditorToolbarPanelProps> = ({ textareaRef, onSourceChange }) => {
+  const selectionRef = useRef<TextSelection | null>(null);
+
+  useLayoutEffect(() => {
+    const selection = selectionRef.current;
+    const textarea = textareaRef.current;
+    if (!selection || !textarea) return;
+
+    textarea.focus();
+    textarea.setSelectionRange(selection.start, selection.end);
+    selectionRef.current = null;
+  });
 
   const hugSelection = useCallback((before: string, after: string = before) => {
-    const textarea = textareaRef.current
-    if (!textarea) return
+    const textarea = textareaRef.current;
+    if (!textarea) return;
 
     const { selectionStart, selectionEnd } = textarea;
+    selectionRef.current = {
+      start: selectionStart + before.length,
+      end: selectionEnd + after.length,
+    }
     // `textarea.value` is always `source` as long as we call `onSourceChange` in one way or another
-    // dispatching input event calls `onChange` in the parent component, witch in turn calls `onSourceChange`
-    // passing `onSourceChange` as prop and calling it directly is probably better but idk
-    const selectedText = textarea.value.slice(selectionStart, selectionEnd)
-    textarea.setRangeText(before + selectedText + after, selectionStart, selectionEnd, "preserve")
-    textarea.dispatchEvent(new Event("input", { bubbles: true }))
-
-    textarea.focus()
-    textarea.setSelectionRange(selectionStart, selectionEnd + before.length + after.length)
+    const selectedText = textarea.value.slice(selectionStart, selectionEnd);
+    onSourceChange(textarea.value.slice(0, selectionStart) + before + selectedText + after + textarea.value.slice(selectionEnd));
   }, []);
 
   return (
@@ -110,7 +126,7 @@ const EditorToolbarPanel: React.FC<EditorToolbarPanelProps> = ({ textareaRef }) 
         </ul>
       </div>
     </div>
-  )
+  );
 }
 
 
