@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useRef } from 'react'
 import { useCallback } from 'react'
+import EditorToolbarButton from '~components/editor-toolbar-button'
 
 
 interface EditorToolbarPanelProps {
@@ -66,8 +67,10 @@ const EditorToolbarPanel: React.FC<EditorToolbarPanelProps> = ({ textareaRef, on
               <li><a className="weditor-h6" title="" href="#"><span>heading level 6</span></a></li>
             </ul>
           </li>
-
-          <li><a className="weditor-bold" title="Полужирный" onClick={() => hugSelection("**")}><span>bold</span></a></li>
+          <li>
+            <EditorToolbarButton className="weditor-bold" textareaRef=textareaRef title="Полужирный"
+              onClick={() => hugSelection("**")} keybind="Ctrl+KeyB" />
+          </li>
           <li><a className="weditor-italic" href="#" title=""><span>italic</span></a></li>
           <li><a className="weditor-underline" href="#" title=""><span>underline</span></a></li>
           <li><a className="weditor-strikethrough" href="#" title=""><span>strikethrough</span></a></li>
