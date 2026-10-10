@@ -32,13 +32,25 @@ const EditorToolbarPanel: React.FC<EditorToolbarPanelProps> = ({ textareaRef, on
     if (!textarea) return;
 
     const { selectionStart, selectionEnd } = textarea;
-    selectionRef.current = {
-      start: selectionStart + before.length,
-      end: selectionEnd + after.length,
+    const sourceBefore = textarea.value.slice(selectionStart - before.length, selectionStart);
+    const sourceAfter = textarea.value.slice(selectionEnd, selectionEnd + after.length);
+
+    if (sourceBefore === before && sourceAfter === after) {
+      selectionRef.current = {
+        start: selectionStart - before.length,
+        end: selectionEnd - before.length,
+      }
+      const selectedText = textarea.value.slice(selectionStart, selectionEnd);
+      onSourceChange(textarea.value.slice(0, selectionStart - before.length) + selectedText + textarea.value.slice(selectionEnd + after.length));
+    } else {
+      selectionRef.current = {
+        start: selectionStart + before.length,
+        end: selectionEnd + before.length,
+      }
+      // `textarea.value` is always `source` as long as we call `onSourceChange` in one way or another
+      const selectedText = textarea.value.slice(selectionStart, selectionEnd);
+      onSourceChange(textarea.value.slice(0, selectionStart) + before + selectedText + after + textarea.value.slice(selectionEnd));
     }
-    // `textarea.value` is always `source` as long as we call `onSourceChange` in one way or another
-    const selectedText = textarea.value.slice(selectionStart, selectionEnd);
-    onSourceChange(textarea.value.slice(0, selectionStart) + before + selectedText + after + textarea.value.slice(selectionEnd));
   }, []);
 
   return (
