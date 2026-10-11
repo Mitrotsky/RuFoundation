@@ -1,13 +1,25 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 
 
+type Letter =
+  | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M"
+  | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z";
+type Digit =
+  | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
+type Key = Letter | Digit;
+
+type ModifierPrefix = Exclude<`${"Ctrl+" | "⌘+" | ""}${"Alt+" | ""}${"Shift+" | ""}`, "">;
+
+export type KeybindLiteral = `${ModifierPrefix}${Key}`;
+
+
 interface EditorToolbarButtonProps {
   readonly textareaRef: React.RefObject<HTMLTextAreaElement>,
   onClick: () => void,
   title: string,
   className?: string,
   content?: string,
-  keybind?: string,
+  keybind?: KeybindLiteral,
 }
 
 
@@ -23,7 +35,7 @@ const isAppleDevice = /Mac|iPhone|iPad/.test(navigator.userAgent);
 const ctrlRepr = isAppleDevice ? "⌘" : "Ctrl";
 
 
-function parseKeybind(kb: string): Keybind {
+function parseKeybind(kb: KeybindLiteral): Keybind {
   const keybindKeys = kb.toLowerCase().trim().split("+");
   const keyName = keybindKeys.at(-1);
   if (!keyName) throw new Error(`"${kb}" is not a valid keybind`);
