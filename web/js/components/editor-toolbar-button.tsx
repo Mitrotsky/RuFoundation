@@ -44,7 +44,7 @@ function parseKeybind(kb: KeybindLiteral): Keybind {
     ctrl: keybindKeys.includes("ctrl"),
     alt: keybindKeys.includes("alt"),
     shift: keybindKeys.includes("shift"),
-    key: keyName,
+    key: keyName.toUpperCase(),
   }
 }
 
@@ -63,7 +63,7 @@ function formatKeybind(keybind: Keybind): string {
   if (keybind.ctrl) kbArray.push(ctrlRepr);
   if (keybind.alt) kbArray.push("Alt");
   if (keybind.shift) kbArray.push("Shift");
-  kbArray.push(keybind.key.toUpperCase());
+  kbArray.push(keybind.key);
   return kbArray.join("+");
 }
 
@@ -75,7 +75,7 @@ function compareKeybind(ev: KeyboardEvent, keybind: Keybind): boolean {
   const displayedKey = keyCode ? keyCodeToLetter(keyCode) : ev.key;
 
   return (
-    displayedKey.toLowerCase() === keybind.key &&
+    displayedKey === keybind.key &&
     ctrlKey === keybind.ctrl &&
     ev.shiftKey === keybind.shift &&
     ev.altKey === keybind.alt

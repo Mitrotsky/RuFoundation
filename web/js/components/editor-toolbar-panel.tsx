@@ -36,23 +36,22 @@ const EditorToolbarPanel: React.FC<EditorToolbarPanelProps> = ({ textareaRef, on
     const sourceBefore = textarea.value.slice(selectionStart - before.length, selectionStart);
     const sourceAfter = textarea.value.slice(selectionEnd, selectionEnd + after.length);
 
+    // `textarea.value` is always `source` as long as we call `onSourceChange` in one way or another
+    const selectedText = textarea.value.slice(selectionStart, selectionEnd);
     if (sourceBefore === before && sourceAfter === after) {
       selectionRef.current = {
         start: selectionStart - before.length,
         end: selectionEnd - before.length,
       }
-      const selectedText = textarea.value.slice(selectionStart, selectionEnd);
       onSourceChange(textarea.value.slice(0, selectionStart - before.length) + selectedText + textarea.value.slice(selectionEnd + after.length));
     } else {
       selectionRef.current = {
         start: selectionStart + before.length,
         end: selectionEnd + before.length,
       }
-      // `textarea.value` is always `source` as long as we call `onSourceChange` in one way or another
-      const selectedText = textarea.value.slice(selectionStart, selectionEnd);
       onSourceChange(textarea.value.slice(0, selectionStart) + before + selectedText + after + textarea.value.slice(selectionEnd));
     }
-  }, []);
+  }, [onSourceChange]);
 
   return (
     <div className="wd-editor-toolbar-panel" id="wd-editor-toolbar-panel">
@@ -71,14 +70,35 @@ const EditorToolbarPanel: React.FC<EditorToolbarPanelProps> = ({ textareaRef, on
             <EditorToolbarButton className="weditor-bold" textareaRef={textareaRef} title="Полужирный"
               onClick={() => hugSelection("**")} keybind="Ctrl+B" />
           </li>
-          <li><a className="weditor-italic" href="#" title=""><span>italic</span></a></li>
-          <li><a className="weditor-underline" href="#" title=""><span>underline</span></a></li>
-          <li><a className="weditor-strikethrough" href="#" title=""><span>strikethrough</span></a></li>
-          <li><a className="weditor-teletype" href="#" title=""><span>teletype</span></a></li>
+          <li>
+            <EditorToolbarButton className="weditor-italic" textareaRef={textareaRef} title="Курсивный"
+              onClick={() => hugSelection("//")} keybind="Ctrl+I" />
+          </li>
+          <li>
+            <EditorToolbarButton className="weditor-underline" textareaRef={textareaRef} title="Подчёркнутый"
+              onClick={() => hugSelection("__")} keybind="Ctrl+U" />
+          </li>
+          <li>
+            <EditorToolbarButton className="weditor-strikethrough" textareaRef={textareaRef} title="Перечёркнутый"
+              onClick={() => hugSelection("--")} />
+          </li>
+          <li>
+            <EditorToolbarButton className="weditor-teletype" textareaRef={textareaRef} title="Моноширинный"
+              onClick={() => hugSelection("{{", "}}")} />
+          </li>
           <li><a className="weditor-quote" href="#" title=""><span>quote</span></a></li>
-          <li><a className="weditor-superscript" href="#" title=""><span>superscript</span></a></li>
-          <li><a className="weditor-subscript" href="#" title=""><span>subscript</span></a></li>
-          <li><a className="weditor-raw" href="#" title=""><span>raw</span></a></li>
+          <li>
+            <EditorToolbarButton className="weditor-superscript" textareaRef={textareaRef} title="Верхний регистр"
+              onClick={() => hugSelection("^^")} />
+          </li>
+          <li>
+            <EditorToolbarButton className="weditor-subscript" textareaRef={textareaRef} title="Нижний регистр"
+              onClick={() => hugSelection(",,")} />
+          </li>
+          <li>
+            <EditorToolbarButton className="weditor-raw" textareaRef={textareaRef} title="Сырой текст"
+              onClick={() => hugSelection("@@")} />
+          </li>
         </ul>
       </div>
       <div>
