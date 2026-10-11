@@ -28,29 +28,28 @@ const EditorToolbarPanel: React.FC<EditorToolbarPanelProps> = ({ textareaRef, on
     selectionRef.current = null;
   });
 
-  const hugSelection = useCallback((before: string, after: string = before) => {
+  const hugSelection = useCallback((before: string, after: string = before, togglable = true) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    const { selectionStart, selectionEnd } = textarea;
-    const sourceBefore = textarea.value.slice(selectionStart - before.length, selectionStart);
-    const sourceAfter = textarea.value.slice(selectionEnd, selectionEnd + after.length);
+    const { selectionStart, selectionEnd, value: taValue } = textarea;
+
+    const isToggling = selectionStart >= before.length
+      && taValue.startsWith(before, selectionStart - before.length)
+      && taValue.startsWith(after, selectionEnd)
+      && togglable;
+
+    const selectionShift = isToggling ? -before.length : before.length;
 
     // `textarea.value` is always `source` as long as we call `onSourceChange` in one way or another
-    const selectedText = textarea.value.slice(selectionStart, selectionEnd);
-    if (sourceBefore === before && sourceAfter === after) {
-      selectionRef.current = {
-        start: selectionStart - before.length,
-        end: selectionEnd - before.length,
-      }
-      onSourceChange(textarea.value.slice(0, selectionStart - before.length) + selectedText + textarea.value.slice(selectionEnd + after.length));
-    } else {
-      selectionRef.current = {
-        start: selectionStart + before.length,
-        end: selectionEnd + before.length,
-      }
-      onSourceChange(textarea.value.slice(0, selectionStart) + before + selectedText + after + textarea.value.slice(selectionEnd));
+    const selectedText = taValue.slice(selectionStart, selectionEnd);
+    selectionRef.current = {
+      start: selectionStart + selectionShift,
+      end: selectionEnd + selectionShift,
     }
+    onSourceChange(isToggling
+      ? taValue.slice(0, selectionStart - before.length) + selectedText + taValue.slice(selectionEnd + after.length)
+      : taValue.slice(0, selectionStart) + before + selectedText + after + taValue.slice(selectionEnd))
   }, [onSourceChange]);
 
   return (
