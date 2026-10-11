@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 
 
 interface EditorToolbarButtonProps {
@@ -11,8 +11,66 @@ interface EditorToolbarButtonProps {
 }
 
 
-// TODO: parse keys correctly (Digit{num}, Key{letter})
-// TODO: add alt and shift support for keybinds just in case
+interface Keybind {
+  ctrl: boolean,
+  alt: boolean,
+  shift: boolean,
+  key: string,
+}
+
+
+const isAppleDevice = /Mac|iPhone|iPad/.test(navigator.userAgent);
+const ctrlRepr = isAppleDevice ? "⌘" : "Ctrl";
+
+
+function parseKeybind(kb: string): Keybind {
+  const keybindKeys = kb.toLowerCase().trim().split("+");
+  const keyName = keybindKeys.at(-1);
+  if (!keyName) throw new Error(`"${kb}" is not a valid keybind`);
+
+  return {
+    ctrl: keybindKeys.includes("ctrl"),
+    alt: keybindKeys.includes("alt"),
+    shift: keybindKeys.includes("shift"),
+    key: keyName,
+  }
+}
+
+
+function keyCodeToLetter(keyCode: string): string {
+  const validKeyTypes = ["Key", "Digit"];
+  for (const keyType of validKeyTypes) {
+    if (keyCode.startsWith(keyType)) return keyCode.slice(keyType.length);
+  }
+  return "undefined";
+}
+
+
+function formatKeybind(keybind: Keybind): string {
+  const kbArray: string[] = [];
+  if (keybind.ctrl) kbArray.push(ctrlRepr);
+  if (keybind.alt) kbArray.push("Alt");
+  if (keybind.shift) kbArray.push("Shift");
+  kbArray.push(keybind.key.toUpperCase());
+  return kbArray.join("+");
+}
+
+
+function compareKeybind(ev: KeyboardEvent, keybind: Keybind): boolean {
+  const ctrlKey = isAppleDevice ? ev.metaKey : ev.ctrlKey ;
+  const keyCode = ev.code;
+
+  const displayedKey = keyCode ? keyCodeToLetter(keyCode) : ev.key;
+
+  return (
+    displayedKey.toLowerCase() === keybind.key &&
+    ctrlKey === keybind.ctrl &&
+    ev.shiftKey === keybind.shift &&
+    ev.altKey === keybind.alt
+  );
+}
+
+
 const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = (
   {
     textareaRef,
@@ -23,26 +81,28 @@ const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = (
     keybind,
   }
 ) => {
-  const key = keybind ? keybind.split("+").at(-1) : null;
+  const parsedKeybind = useMemo(() => keybind ? parseKeybind(keybind) : null, [keybind]);
+  const onClickRef = useRef(onClick);
 
   useEffect(() => {
     const textarea = textareaRef.current;
-    if (!textarea || !key) return;
+    if (!textarea || !parsedKeybind) return;
 
     const keyPressHandler = (ev: KeyboardEvent)=> {
-      if (ev.code !== key || !(ev.ctrlKey || ev.metaKey)) return;
+      if (!compareKeybind(ev, parsedKeybind)) return;
       ev.preventDefault();
-      onClick();
+      if (ev.repeat) return;
+      onClickRef.current();
     }
 
     textarea.addEventListener("keydown", keyPressHandler);
     return () => textarea.removeEventListener("keydown", keyPressHandler);
-  }, [onClick]);
+  }, [parsedKeybind]);
 
-  const fTitle = key ? `${title} (Ctrl+${key})` : title;
+  const fTitle = parsedKeybind ? `${title} (${formatKeybind(parsedKeybind)})` : title;
 
   return (
-    <a className={className} onClick={onClick} title={fTitle}>
+    <a className={className} onClick={onClickRef.current} title={fTitle}>
       <span>{content}</span>
     </a>
   )

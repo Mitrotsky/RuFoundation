@@ -68,8 +68,8 @@ const EditorToolbarPanel: React.FC<EditorToolbarPanelProps> = ({ textareaRef, on
             </ul>
           </li>
           <li>
-            <EditorToolbarButton className="weditor-bold" textareaRef=textareaRef title="Полужирный"
-              onClick={() => hugSelection("**")} keybind="Ctrl+KeyB" />
+            <EditorToolbarButton className="weditor-bold" textareaRef={textareaRef} title="Полужирный"
+              onClick={() => hugSelection("**")} keybind="Ctrl+B" />
           </li>
           <li><a className="weditor-italic" href="#" title=""><span>italic</span></a></li>
           <li><a className="weditor-underline" href="#" title=""><span>underline</span></a></li>
