@@ -23,8 +23,8 @@ const EditorToolbarPanel: React.FC<EditorToolbarPanelProps> = ({ textareaRef, on
     const textarea = textareaRef.current;
     if (!selection || !textarea) return;
 
-    textarea.focus();
     textarea.setSelectionRange(selection.start, selection.end);
+    textarea.focus();
     selectionRef.current = null;
   });
 
