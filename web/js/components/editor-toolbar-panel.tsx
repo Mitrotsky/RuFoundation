@@ -52,6 +52,31 @@ const EditorToolbarPanel: React.FC<EditorToolbarPanelProps> = ({ textareaRef, on
       : taValue.slice(0, selectionStart) + before + selectedText + after + taValue.slice(selectionEnd))
   }, [onSourceChange]);
 
+  const inject = useCallback((before: string, after: string, message: string = "") => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const { selectionStart, selectionEnd, value: taValue } = textarea;
+
+    const isNewlineBegin = taValue.startsWith("\n", selectionStart - 1) || selectionStart == 0;
+    const isNewlineEnd = taValue.endsWith("\n", selectionEnd + 1);
+
+    const newlineSeparatorBegin = !isNewlineBegin ? "\n\n" : "";
+    const newlineSeparatorEnd = !isNewlineEnd ? "\n\n" : "";
+
+    const hasSelection = selectionStart !== selectionEnd;
+    const selectedText = taValue.slice(selectionStart, selectionEnd);
+    const content = hasSelection ? selectedText : message;
+
+    selectionRef.current = {
+      start: selectionStart + newlineSeparatorBegin.length + before.length + 1,
+      end: selectionStart + newlineSeparatorBegin.length + before.length + 1 + content.length,
+    }
+
+    const injectable = newlineSeparatorBegin + before + '\n' + content + '\n' + after + newlineSeparatorEnd;
+    onSourceChange(taValue.slice(0, selectionStart) + injectable + taValue.slice(selectionEnd));
+  }, [onSourceChange]);
+
   return (
     <div className="wd-editor-toolbar-panel" id="wd-editor-toolbar-panel">
       <div>
@@ -103,8 +128,10 @@ const EditorToolbarPanel: React.FC<EditorToolbarPanelProps> = ({ textareaRef, on
       <div>
         <ul>
           <li><a className="weditor-hr" href="#" title=""><span>hr</span></a></li>
-
-          <li><a className="weditor-div" href="#" title=""><span>div</span></a>
+          <li>
+            <a className="weditor-div" href="#" title=""><span>div</span></a>
+            <EditorToolbarButton className="weditor-div" textareaRef={textareaRef} title="div-элемент"
+              onClick={() => inject("[[div]]", "[[/div]]", "Содержимое div'а")} />
           </li>
 
           <li><a className="weditor-clearfloat" href="#" title=""><span>clear float</span></a>
