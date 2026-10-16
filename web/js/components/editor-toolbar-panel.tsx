@@ -129,7 +129,7 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
     onSourceChange(entry.source);
   }, [onSourceChange]);
 
-  const hugSelection = useCallback((before: string, after: string = before, togglable = true) => {
+  const insertInline = useCallback((before: string, after: string = before, togglable = true) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -157,30 +157,86 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
     onSourceChange(source)
   }, [onSourceChange, addHistoryEntry]);
 
-  const inject = useCallback((before: string, after: string, message: string = "") => {
+  const insertBlock = useCallback((before: string, after: string, message: string = "") => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
     const { selectionStart, selectionEnd, value: taValue } = textarea;
 
-    const isNewlineBegin = taValue.startsWith("\n", selectionStart - 1) || selectionStart == 0;
-    const isNewlineEnd = taValue.endsWith("\n", selectionEnd + 1);
-
-    const newlineSeparatorBegin = !isNewlineBegin ? "\n\n" : "";
-    const newlineSeparatorEnd = !isNewlineEnd ? "\n\n" : "";
+    const newlinePrefix = taValue.startsWith("\n", selectionStart - 1) || selectionStart == 0 ? "" : "\n\n";
+    const newlineSuffix = taValue.endsWith("\n", selectionEnd + 1) ? "" : "\n\n";
 
     const hasSelection = selectionStart !== selectionEnd;
-    const selectedText = taValue.slice(selectionStart, selectionEnd);
-    const content = hasSelection ? selectedText : message;
+    const content = hasSelection ? taValue.slice(selectionStart, selectionEnd) : message;
 
     const selection = {
-      start: selectionStart + newlineSeparatorBegin.length + before.length + 1,
-      end: selectionStart + newlineSeparatorBegin.length + before.length + 1 + content.length,
+      start: selectionStart + newlinePrefix.length + before.length + 1,
+      end: selectionStart + newlinePrefix.length + before.length + 1 + content.length,
     };
-    const injectable = newlineSeparatorBegin + before + '\n' + content + '\n' + after + newlineSeparatorEnd;
+    const injectable = newlinePrefix + before + "\n" + content + "\n" + after + newlineSuffix;
     const source = taValue.slice(0, selectionStart) + injectable + taValue.slice(selectionEnd);
 
     selectionRef.current = selection;
+    addHistoryEntry({ source, selection });
+    onSourceChange(source);
+  }, [onSourceChange, addHistoryEntry]);
+
+  const insertList = useCallback((marker: string, message: string = "") => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const { selectionStart, selectionEnd, value: taValue } = textarea;
+    const newlinePrefix = taValue.startsWith("\n", selectionStart - 1) || selectionStart == 0 ? "" : "\n";
+    const newlineSuffix = taValue.endsWith("\n", selectionEnd + 1) ? "" : "\n";
+    const markerPrefix = `${marker} `;
+
+    const hasSelection = selectionStart !== selectionEnd;
+    const content = hasSelection ? taValue.slice(selectionStart, selectionEnd).replaceAll("\n", "\n" + markerPrefix) : message;
+
+    const selection = {
+      start: selectionStart + newlinePrefix.length + markerPrefix.length,
+      end: selectionStart + newlinePrefix.length + markerPrefix.length + content.length,
+    };
+    const injectable = newlinePrefix + markerPrefix + content + newlineSuffix;
+    const source = taValue.slice(0, selectionStart) + injectable + taValue.slice(selectionEnd);
+
+    selectionRef.current = selection;
+    addHistoryEntry({ source, selection });
+    onSourceChange(source);
+  }, [onSourceChange, addHistoryEntry]);
+
+  const indent = useCallback((isIncrement: boolean) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const whitespaceRegex = /^\s/;
+
+    const { selectionStart, selectionEnd, value: taValue } = textarea;
+
+    const hasSelection = selectionStart !== selectionEnd;
+    const beginningIdx = taValue.slice(0, selectionStart).lastIndexOf("\n") + 1;
+    const endingIdx = taValue.indexOf("\n", hasSelection && taValue[selectionEnd - 1] === "\n" ? selectionEnd - 1 : selectionEnd )
+    const selectedBlock = taValue.slice(beginningIdx, endingIdx);
+
+    const lines = selectedBlock.split("\n");
+    const tmpLines: string[] = [];
+    for (const line of lines) tmpLines.push(isIncrement ? ` ${line}` : line.replace(whitespaceRegex, ""));
+    const injectable = tmpLines.join("\n");
+
+    const source = taValue.slice(0, beginningIdx) + injectable + taValue.slice(endingIdx);
+    const selection = {
+      start: beginningIdx,
+      end: endingIdx + injectable.length - selectedBlock.length,
+    }
+    selectionRef.current = selection;
+
+    if (injectable === selectedBlock) {
+      // React no-ops if source doesn't change therefore `useLayoutEffect` doesn't execute
+      textarea.setSelectionRange(selection.start, selection.end);
+      textarea.focus();
+      return;
+    }
+
     addHistoryEntry({ source, selection });
     onSourceChange(source);
   }, [onSourceChange, addHistoryEntry]);
@@ -202,24 +258,49 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
   }, [renderHistoryEntry]);
 
   // TODO: unify `buttonData` and `actions` creation to nuke duplicate code
-  const buttonData: EditorToolbarButtonProps[] = useMemo(() => [
-    { className: "weditor-bold", title: "Полужирный", onClick: () => hugSelection("**"), keybind: "Ctrl+B" },
-    { className: "weditor-italic", title: "Курсивный", onClick: () => hugSelection("//"), keybind: "Ctrl+I" },
-    { className: "weditor-underline", title: "Подчёркнутый", onClick: () => hugSelection("__"), keybind: "Ctrl+U" },
-    { className: "weditor-strikethrough", title: "Перечёркнутый", onClick: () => hugSelection("--") },
-    { className: "weditor-teletype", title: "Моноширинный", onClick: () => hugSelection("{{", "}}") },
-    { className: "weditor-superscript", title: "Верхний регистр", onClick: () => hugSelection("^^") },
-    { className: "weditor-subscript", title: "Нижний регистр", onClick: () => hugSelection(",,") },
-    { className: "weditor-raw", title: "Сырой текст", onClick: () => hugSelection("@@") },
-  ], [hugSelection]);
+  const textFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
+    { className: "weditor-bold", title: "Полужирный", onClick: () => insertInline("**"), keybind: "Ctrl+B" },
+    { className: "weditor-italic", title: "Курсивный", onClick: () => insertInline("//"), keybind: "Ctrl+I" },
+    { className: "weditor-underline", title: "Подчёркнутый", onClick: () => insertInline("__"), keybind: "Ctrl+U" },
+    { className: "weditor-strikethrough", title: "Перечёркнутый", onClick: () => insertInline("--") },
+    { className: "weditor-teletype", title: "Моноширинный", onClick: () => insertInline("{{", "}}") },
+    { className: "weditor-superscript", title: "Верхний регистр", onClick: () => insertInline("^^") },
+    { className: "weditor-subscript", title: "Нижний регистр", onClick: () => insertInline(",,") },
+    { className: "weditor-raw", title: "Сырой текст", onClick: () => insertInline("@@") },
+    { className: "weditor-textcolor", title: "Цветной текст", onClick: () => insertInline("##цвет|", "##", false) },
+  ], [insertInline]);
+
+  const paragraphFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
+    { className: "weditor-alignleft", title: "Выравнивание по левому краю", onClick: () => insertBlock("[[<]]", "[[/<]]"), keybind: "Ctrl+L" },
+    { className: "weditor-alignmiddle", title: "Выравнивание по центру", onClick: () => insertBlock("[[=]]", "[[/=]]"), keybind: "Ctrl+E" },
+    { className: "weditor-alignright", title: "Выравнивание по правому краю", onClick: () => insertBlock("[[>]]", "[[/>]]"), keybind: "Ctrl+R" },
+    { className: "weditor-alignjustify", title: "Выравнивание по ширине", onClick: () => insertBlock("[[==]]", "[[/==]]"), keybind: "Ctrl+J" },
+  ], [insertBlock]);
+
+  const listFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
+    { className: "weditor-bullist", title: "Маркированный список", onClick: () => insertList("*") },
+    { className: "weditor-numlist", title: "Нумерованный список", onClick: () => insertList("#") },
+    { className: "weditor-incindent", title: "Увеличить отступ", onClick: () => indent(true) },
+    { className: "weditor-decindent", title: "Уменьшить отступ", onClick: () => indent(false) },
+    { className: "weditor-deflist", title: "Список определений", onClick: () => insertList(": Термин : ", "Определение") },
+  ], [insertList]);
+
+  const blockFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
+    { className: "weditor-collapsible", title: "Раскрываемый блок", onClick: () => insertBlock("[[collapsible show=\"+ Надпись при открытии спойлера\" hide=\"- Надпись при закрытии спойлера\"]]", "[[/collapsible]]", "Содержимое скрываемого блока") },
+    { className: "weditor-quote", title: "Блок цитирования", onClick: () => insertBlock("[[blockquote]]", "[[/blockquote]]", "Содержимое блока цитирования") },
+  ], [insertBlock]);
 
   const actions: Map<KeybindLiteral, () => void> = useMemo(() => new Map([
-    ["Ctrl+B", () => hugSelection("**")],
-    ["Ctrl+I", () => hugSelection("//")],
-    ["Ctrl+U", () => hugSelection("__")],
+    ["Ctrl+B", () => insertInline("**")],
+    ["Ctrl+I", () => insertInline("//")],
+    ["Ctrl+U", () => insertInline("__")],
+    ["Ctrl+L", () => insertBlock("[[<]]", "[[/<]]")],
+    ["Ctrl+E", () => insertBlock("[[=]]", "[[/=]]")],
+    ["Ctrl+R", () => insertBlock("[[>]]", "[[/>]]")],
+    ["Ctrl+J", () => insertBlock("[[==]]", "[[/==]]")],
     ["Ctrl+Z", () => undo()],
     ["Ctrl+Shift+Z", () => redo()],
-  ]), [hugSelection, undo, redo, /* Jung Kook - Please Don't Change */]);
+  ]), [insertInline, insertBlock, undo, redo, /* Jung Kook - Please Don't Change */]);
 
   useLayoutEffect(() => {
     const selection = selectionRef.current;
@@ -272,67 +353,41 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
 
   return (
     <div className={`wd-editor-toolbar-panel ${className}`} id="wd-editor-toolbar-panel">
-      <div className="editor-toolbar-inline-options">
-        {buttonData.map((p, idx) => <EditorToolbarButton
+      <div className="editor-toolbar-options text-format-options">
+        {textFormatButtonData.map((p, idx) => <EditorToolbarButton
           className={p.className}
           onClick={p.onClick}
           title={p.title}
           keybind={p.keybind}
-          key={idx}
+          key={`textFormat-${idx}`}
         />)}
       </div>
-      <div>
-        <ul>
-          <li><a className="weditor-h1" title="" href="#"><span>heading level 1</span></a>
-            <ul>
-              <li><a className="weditor-h2" title="" href="#"><span>heading level 2</span></a></li>
-              <li><a className="weditor-h3" title="" href="#"><span>heading level 3</span></a></li>
-              <li><a className="weditor-h4" title="" href="#"><span>heading level 4</span></a></li>
-              <li><a className="weditor-h5" title="" href="#"><span>heading level 5</span></a></li>
-              <li><a className="weditor-h6" title="" href="#"><span>heading level 6</span></a></li>
-            </ul>
-          </li>
-          <li><a className="weditor-quote" href="#" title=""><span>quote</span></a></li>
-        </ul>
+      <div className="editor-toolbar-options paragraph-format-options">
+        {paragraphFormatButtonData.map((p, idx) => <EditorToolbarButton
+          className={p.className}
+          onClick={p.onClick}
+          title={p.title}
+          keybind={p.keybind}
+          key={`paragraphFormat-${idx}`}
+        />)}
       </div>
-      <div>
-        <ul>
-          <li><a className="weditor-hr" href="#" title=""><span>hr</span></a></li>
-          <li>
-            <a className="weditor-div" href="#" title=""><span>div</span></a>
-            <EditorToolbarButton className="weditor-div" title="div-элемент"
-              onClick={() => inject("[[div]]", "[[/div]]", "Содержимое div'а")} />
-          </li>
-
-          <li><a className="weditor-clearfloat" href="#" title=""><span>clear float</span></a>
-            <ul>
-              <li><a className="weditor-clearfloatleft" href="#" title=""><span>left</span></a></li>
-              <li><a className="weditor-clearfloatright" href="#" title=""><span>right</span></a></li>
-            </ul>
-          </li>
-
-          <li><a className="weditor-table" href="#" title=""><span>table</span></a></li>
-
-          <li><a className="weditor-toc" href="#" title=""><span>toc</span></a></li>
-
-          <li className="hseparator"></li>
-          <li><a className="weditor-code" href="#" title=""><span>code</span></a></li>
-          <li><a className="weditor-codewiz" href="#" title=""><span>code wizard</span></a></li>
-
-          <li className="hseparator"></li>
-          <li><a className="weditor-uri" href="#" title=""><span>url</span></a></li>
-          <li><a className="weditor-uriwiz" href="#" title=""><span>url link wizard</span></a></li>
-
-          <li><a className="weditor-pagelink" href="#" title=""><span>page link</span></a></li>
-          <li><a className="weditor-pagelinkwiz" href="#" title=""><span>page link wizard</span></a></li>
-
-          <li className="hseparator"></li>
-          <li><a className="weditor-image" href="#" title=""><span>image</span></a></li>
-          <li><a className="weditor-imagewiz" href="#" title=""><span>image wizard</span></a></li>
-
-          <li className="hseparator"></li>
-          <li><a className="weditor-html" href="#" title=""><span>HTML</span></a></li>
-        </ul>
+      <div className="editor-toolbar-options list-format-options">
+        {listFormatButtonData.map((p, idx) => <EditorToolbarButton
+          className={p.className}
+          onClick={p.onClick}
+          title={p.title}
+          keybind={p.keybind}
+          key={`listFormat-${idx}`}
+        />)}
+      </div>
+      <div className="editor-toolbar-options block-format-options">
+        {blockFormatButtonData.map((p, idx) => <EditorToolbarButton
+            className={p.className}
+            onClick={p.onClick}
+            title={p.title}
+            keybind={p.keybind}
+            key={`blockFormat-${idx}`}
+        />)}
       </div>
       <div>
         <ul>
@@ -363,9 +418,25 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
 
 const EditorToolbarPanel = styled(EditorToolbarPanel__Bare)`
   /* temp styles todo: redo after the button refactor */
-  & * {
+  * {
     box-sizing: border-box;
   }
+  :where(.editor-toolbar-options) {
+    display: inline-flex;
+    position: relative;
+    gap: 2px;
+    vertical-align: text-bottom;
+  }
+  :where(.editor-toolbar-options + .editor-toolbar-options)::before {
+    content: "";
+    position: absolute;
+    height: 100%;
+    width: 2px;
+    top: 0;
+    left: 0;
+    background-color: #ccc;
+  }
+  
   a {
     height: 22px;
     width: 22px;
