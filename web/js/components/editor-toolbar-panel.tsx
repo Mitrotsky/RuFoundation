@@ -1,5 +1,5 @@
 import React from 'react'
-import { useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
+import { useEffect, useLayoutEffect, useRef, useCallback, useMemo, useState } from 'react'
 import styled from 'styled-components'
 
 
@@ -22,17 +22,20 @@ interface EditHistory {
   lastEditBatch: number,
 }
 
-
+type FKey = `F${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12}`;
+type Special = "Tab" | "Escape" | FKey;
 type Letter =
   | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M"
   | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z";
 type Digit =
   | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "0";
-type Key = Letter | Digit;
 
-type ModifierPrefix = Exclude<`${"Ctrl+" | ""}${"Alt+" | ""}${"Shift+" | ""}`, "">;
+type Modifiers = `${"Ctrl+" | ""}${"Alt+" | ""}${"Shift+" | ""}`;
+type ModifierPrefix = Exclude<Modifiers, "">;
 
-type KeybindLiteral = `${ModifierPrefix}${Key}`;
+type KeybindLiteral =
+  | `${ModifierPrefix}${Letter | Digit}`
+  | `${Modifiers}${Special}`;
 
 
 const isAppleDevice = /Mac|iPhone|iPad/.test(navigator.userAgent);
@@ -40,6 +43,9 @@ const ctrlRepr = isAppleDevice ? "⌘" : "Ctrl";
 
 
 function keyCodeToLetter(keycode: string): string | null {
+  const specialKeyRegex = /^(?:Tab|Escape|F(?:[1-9]|1[0-2]))$/;
+  if (specialKeyRegex.test(keycode)) return keycode;
+
   const letterRegex = /(?:Key|Digit)(?<char>[A-Z0-9])/;
   const key = keycode.match(letterRegex)?.groups?.char;
   return key ? key : null;
@@ -56,7 +62,7 @@ function eventToLiteral(ev: KeyboardEvent): KeybindLiteral | null {
   if (nonNative) return null;
 
   const prefix = `${ctrl ? "Ctrl+" : ""}${ev.altKey ? "Alt+" : ""}${ev.shiftKey ? "Shift+" : ""}`;
-  if (!prefix) return null;
+  if (!prefix && key.length === 1) return null;
 
   return `${prefix}${key}` as KeybindLiteral;
 }
@@ -96,8 +102,12 @@ interface EditorToolbarPanelProps {
 
 
 const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaRef, onSourceChange, className }) => {
+  const [keyboardTrapped, setKeyboardTrapped] = useState<boolean>(false);
+
   const selectionRef = useRef<TextSelection | null>(null);
   const editHistoryRef = useRef<EditHistory>({ entries: [], pointer: -1, lastEdit: 0, lastEditBatch: 0, });
+
+  // Methods
 
   const addHistoryEntry = useCallback((entry: EditHistoryEntry, rewritable = false) => {
     const MAX_ENTRY_SIZE = 256;
@@ -257,7 +267,8 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
     }
   }, [renderHistoryEntry]);
 
-  // TODO: unify `buttonData` and `actions` creation to nuke duplicate code
+  // Data
+
   const textFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
     { className: "weditor-bold", title: "Полужирный", onClick: () => insertInline("**"), keybind: "Ctrl+B" },
     { className: "weditor-italic", title: "Курсивный", onClick: () => insertInline("//"), keybind: "Ctrl+I" },
@@ -280,27 +291,50 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
   const listFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
     { className: "weditor-bullist", title: "Маркированный список", onClick: () => insertList("*") },
     { className: "weditor-numlist", title: "Нумерованный список", onClick: () => insertList("#") },
-    { className: "weditor-incindent", title: "Увеличить отступ", onClick: () => indent(true) },
-    { className: "weditor-decindent", title: "Уменьшить отступ", onClick: () => indent(false) },
+    { className: "weditor-incindent", title: "Увеличить отступ", onClick: () => indent(true), keybind: "Tab" },
+    { className: "weditor-decindent", title: "Уменьшить отступ", onClick: () => indent(false), keybind: "Shift+Tab" },
     { className: "weditor-deflist", title: "Список определений", onClick: () => insertList(": Термин : ", "Определение") },
-  ], [insertList]);
+  ], [insertList, indent]);
 
   const blockFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
     { className: "weditor-collapsible", title: "Раскрываемый блок", onClick: () => insertBlock("[[collapsible show=\"+ Надпись при открытии спойлера\" hide=\"- Надпись при закрытии спойлера\"]]", "[[/collapsible]]", "Содержимое скрываемого блока") },
     { className: "weditor-quote", title: "Блок цитирования", onClick: () => insertBlock("[[blockquote]]", "[[/blockquote]]", "Содержимое блока цитирования") },
+    { className: "weditor-div", title: "div-элемент", onClick: () => insertBlock("[[div]]", "[[/div]]", "Содержимое блока") },
   ], [insertBlock]);
 
-  const actions: Map<KeybindLiteral, () => void> = useMemo(() => new Map([
-    ["Ctrl+B", () => insertInline("**")],
-    ["Ctrl+I", () => insertInline("//")],
-    ["Ctrl+U", () => insertInline("__")],
-    ["Ctrl+L", () => insertBlock("[[<]]", "[[/<]]")],
-    ["Ctrl+E", () => insertBlock("[[=]]", "[[/=]]")],
-    ["Ctrl+R", () => insertBlock("[[>]]", "[[/>]]")],
-    ["Ctrl+J", () => insertBlock("[[==]]", "[[/==]]")],
-    ["Ctrl+Z", () => undo()],
-    ["Ctrl+Shift+Z", () => redo()],
-  ]), [insertInline, insertBlock, undo, redo, /* Jung Kook - Please Don't Change */]);
+  const inlineFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
+    { className: "weditor-footnote", title: "Сноска", onClick: () => insertInline("[[footnote]]", "[[/footnote]]", false) },
+    { className: "weditor-span", title: "span-элемент", onClick: () => insertInline("[[span]]", "[[/span]]", false) },
+  ], [insertInline]);
+
+  const miscFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
+    // If it works, it is a good code
+    //   - Alexey "Tsoding" Kutepov
+    { className: "weditor-hr", title: "Горизонтальная линия", onClick: () => insertList("----") },
+    { className: "weditor-clearfloat", title: "Сброс плавающих элементов", onClick: () => insertList("~~~~") },
+  ], [insertList]);
+
+  const actions: Map<KeybindLiteral, () => void> = useMemo(() => {
+    const buttonData = [
+        ...textFormatButtonData,
+        ...paragraphFormatButtonData,
+        ...listFormatButtonData,
+        ...blockFormatButtonData,
+        ...inlineFormatButtonData,
+        ...miscFormatButtonData,
+    ].filter((entry): entry is typeof entry & { keybind: KeybindLiteral } => Boolean(entry.keybind));
+    const actionsMap: Map<KeybindLiteral, () => void> = new Map([
+      ["Ctrl+Z", () => undo()],
+      ["Ctrl+Shift+Z", () => redo()],
+      ["Escape", () => setKeyboardTrapped(false)],
+    ]);
+
+    for (const entry of buttonData) actionsMap.set(entry.keybind, entry.onClick);
+
+    return actionsMap;
+  }, [textFormatButtonData, paragraphFormatButtonData, listFormatButtonData, blockFormatButtonData, inlineFormatButtonData, miscFormatButtonData, setKeyboardTrapped, undo, redo /* Jung Kook - Please Don't Change */]);
+
+  // Hooks
 
   useLayoutEffect(() => {
     const selection = selectionRef.current;
@@ -317,21 +351,39 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
     if (!textarea) return;
 
     const keyPressHandler = (ev: KeyboardEvent)=> {
+      const REPEATABLE_KEYBINDS: KeybindLiteral[] = ["Ctrl+Z", "Ctrl+Shift+Z"];
+
       const kb = eventToLiteral(ev);
       if (!kb) return;
+
+      const isTab = kb === "Tab" || kb === "Shift+Tab";
+      if (isTab && !keyboardTrapped) return;
 
       const action = actions.get(kb);
       if (!action) return;
 
       ev.preventDefault();
-      if (ev.repeat && !["Ctrl+Z", "Ctrl+Shift+Z"].includes(kb)) return;
+      if (ev.repeat && !REPEATABLE_KEYBINDS.includes(kb)) return;
 
       action();
     };
 
+    const focusHandler = () => {
+      setKeyboardTrapped(true);
+    }
+    const blurHandler = () => {
+      setKeyboardTrapped(false);
+    }
+
     textarea.addEventListener("keydown", keyPressHandler);
-    return () => textarea.removeEventListener("keydown", keyPressHandler);
-  }, [actions]);
+    textarea.addEventListener("focus", focusHandler);
+    textarea.addEventListener("blur", blurHandler);
+    return () => {
+      textarea.removeEventListener("keydown", keyPressHandler);
+      textarea.removeEventListener("focus", focusHandler);
+      textarea.removeEventListener("blur", blurHandler);
+    };
+  }, [actions, keyboardTrapped, setKeyboardTrapped]);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -353,41 +405,64 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
 
   return (
     <div className={`wd-editor-toolbar-panel ${className}`} id="wd-editor-toolbar-panel">
-      <div className="editor-toolbar-options text-format-options">
-        {textFormatButtonData.map((p, idx) => <EditorToolbarButton
-          className={p.className}
-          onClick={p.onClick}
-          title={p.title}
-          keybind={p.keybind}
-          key={`textFormat-${idx}`}
-        />)}
+      <div>
+        <div className="editor-toolbar-options text-format-options">
+          {textFormatButtonData.map((p, idx) => <EditorToolbarButton
+              className={p.className}
+              onClick={p.onClick}
+              title={p.title}
+              keybind={p.keybind}
+              key={`textFormat-${idx}`}
+          />)}
+        </div>
+        <div className="editor-toolbar-options paragraph-format-options">
+          {paragraphFormatButtonData.map((p, idx) => <EditorToolbarButton
+              className={p.className}
+              onClick={p.onClick}
+              title={p.title}
+              keybind={p.keybind}
+              key={`paragraphFormat-${idx}`}
+          />)}
+        </div>
+        <div className="editor-toolbar-options list-format-options">
+          {listFormatButtonData.map((p, idx) => <EditorToolbarButton
+              className={p.className}
+              onClick={p.onClick}
+              title={p.title}
+              keybind={p.keybind}
+              key={`listFormat-${idx}`}
+          />)}
+        </div>
+        <div className="editor-toolbar-options block-format-options">
+          {blockFormatButtonData.map((p, idx) => <EditorToolbarButton
+              className={p.className}
+              onClick={p.onClick}
+              title={p.title}
+              keybind={p.keybind}
+              key={`blockFormat-${idx}`}
+          />)}
+        </div>
+        <div className="editor-toolbar-options inline-format-options">
+          {inlineFormatButtonData.map((p, idx) => <EditorToolbarButton
+              className={p.className}
+              onClick={p.onClick}
+              title={p.title}
+              keybind={p.keybind}
+              key={`inlineFormat-${idx}`}
+          />)}
+        </div>
+        <div className="editor-toolbar-options misc-format-options">
+          {miscFormatButtonData.map((p, idx) => <EditorToolbarButton
+              className={p.className}
+              onClick={p.onClick}
+              title={p.title}
+              keybind={p.keybind}
+              key={`miscFormat-${idx}`}
+          />)}
+        </div>
       </div>
-      <div className="editor-toolbar-options paragraph-format-options">
-        {paragraphFormatButtonData.map((p, idx) => <EditorToolbarButton
-          className={p.className}
-          onClick={p.onClick}
-          title={p.title}
-          keybind={p.keybind}
-          key={`paragraphFormat-${idx}`}
-        />)}
-      </div>
-      <div className="editor-toolbar-options list-format-options">
-        {listFormatButtonData.map((p, idx) => <EditorToolbarButton
-          className={p.className}
-          onClick={p.onClick}
-          title={p.title}
-          keybind={p.keybind}
-          key={`listFormat-${idx}`}
-        />)}
-      </div>
-      <div className="editor-toolbar-options block-format-options">
-        {blockFormatButtonData.map((p, idx) => <EditorToolbarButton
-            className={p.className}
-            onClick={p.onClick}
-            title={p.title}
-            keybind={p.keybind}
-            key={`blockFormat-${idx}`}
-        />)}
+      <div>
+        <i>{keyboardTrapped ? "Используйте Escape чтобы вернуться к навигации по странице" : "Выделите редактор чтобы использовать панель инструментов"}</i>
       </div>
       <div>
         <ul>
