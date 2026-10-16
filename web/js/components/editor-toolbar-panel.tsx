@@ -9,6 +9,20 @@ interface TextSelection {
 }
 
 
+interface EditHistoryEntry {
+  source: string,
+  selection: TextSelection,
+}
+
+
+interface EditHistory {
+  entries: EditHistoryEntry[],
+  pointer: number,
+  lastEdit: number,
+  lastEditBatch: number,
+}
+
+
 type Letter =
   | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M"
   | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z";
@@ -83,6 +97,37 @@ interface EditorToolbarPanelProps {
 
 const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaRef, onSourceChange, className }) => {
   const selectionRef = useRef<TextSelection | null>(null);
+  const editHistoryRef = useRef<EditHistory>({ entries: [], pointer: -1, lastEdit: 0, lastEditBatch: 0, });
+
+  const addHistoryEntry = useCallback((entry: EditHistoryEntry, rewritable = false) => {
+    const MAX_ENTRY_SIZE = 256;
+    const MIN_DELAY_MS = 350;
+    const MAX_DELAY_MS = 1000;
+
+    const history = editHistoryRef.current;
+    const currentTime = Date.now();
+    const shouldRewrite = rewritable
+      && (currentTime - history.lastEdit) < MIN_DELAY_MS
+      && (currentTime - history.lastEditBatch) < MAX_DELAY_MS;
+
+    history.entries.length = history.pointer + 1;
+    if (shouldRewrite) {
+      history.entries[history.pointer] = entry;
+    } else {
+      history.entries.push(entry);
+      if (history.entries.length > MAX_ENTRY_SIZE) {
+        history.entries.shift();
+      }
+      history.pointer = history.entries.length - 1;
+      history.lastEditBatch = currentTime;
+    }
+    history.lastEdit = rewritable ? currentTime : 0;
+    }, []);
+
+  const renderHistoryEntry = useCallback((entry: EditHistoryEntry) => {
+    selectionRef.current = entry.selection;
+    onSourceChange(entry.source);
+  }, [onSourceChange]);
 
   const hugSelection = useCallback((before: string, after: string = before, togglable = true) => {
     const textarea = textareaRef.current;
@@ -99,14 +144,18 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
 
     // `textarea.value` is always `source` as long as we call `onSourceChange` in one way or another
     const selectedText = taValue.slice(selectionStart, selectionEnd);
-    selectionRef.current = {
+    const selection = {
       start: selectionStart + selectionShift,
       end: selectionEnd + selectionShift,
     }
-    onSourceChange(isToggling
+    const source = isToggling
       ? taValue.slice(0, selectionStart - before.length) + selectedText + taValue.slice(selectionEnd + after.length)
-      : taValue.slice(0, selectionStart) + before + selectedText + after + taValue.slice(selectionEnd))
-  }, [onSourceChange]);
+      : taValue.slice(0, selectionStart) + before + selectedText + after + taValue.slice(selectionEnd);
+
+    selectionRef.current = selection;
+    addHistoryEntry({ source, selection })
+    onSourceChange(source)
+  }, [onSourceChange, addHistoryEntry]);
 
   const inject = useCallback((before: string, after: string, message: string = "") => {
     const textarea = textareaRef.current;
@@ -124,14 +173,33 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
     const selectedText = taValue.slice(selectionStart, selectionEnd);
     const content = hasSelection ? selectedText : message;
 
-    selectionRef.current = {
+    const selection = {
       start: selectionStart + newlineSeparatorBegin.length + before.length + 1,
       end: selectionStart + newlineSeparatorBegin.length + before.length + 1 + content.length,
-    }
-
+    };
     const injectable = newlineSeparatorBegin + before + '\n' + content + '\n' + after + newlineSeparatorEnd;
-    onSourceChange(taValue.slice(0, selectionStart) + injectable + taValue.slice(selectionEnd));
-  }, [onSourceChange]);
+    const source = taValue.slice(0, selectionStart) + injectable + taValue.slice(selectionEnd);
+
+    selectionRef.current = selection;
+    addHistoryEntry({ source, selection });
+    onSourceChange(source);
+  }, [onSourceChange, addHistoryEntry]);
+
+  const undo = useCallback(() => {
+    const history = editHistoryRef.current;
+    if (history.pointer > 0) {
+      history.pointer -= 1;
+      renderHistoryEntry(history.entries[history.pointer]);
+    }
+  }, [renderHistoryEntry]);
+
+  const redo = useCallback(() => {
+    const history = editHistoryRef.current;
+    if (history.pointer < history.entries.length - 1) {
+      history.pointer += 1;
+      renderHistoryEntry(history.entries[history.pointer]);
+    }
+  }, [renderHistoryEntry]);
 
   // TODO: unify `buttonData` and `actions` creation to nuke duplicate code
   const buttonData: EditorToolbarButtonProps[] = useMemo(() => [
@@ -149,10 +217,9 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
     ["Ctrl+B", () => hugSelection("**")],
     ["Ctrl+I", () => hugSelection("//")],
     ["Ctrl+U", () => hugSelection("__")],
-    // TODO: implement later
-    ["Ctrl+Z", () => {/* undo */}],
-    ["Ctrl+Shift+Z", () => {/* redo */}]
-  ]), [hugSelection, /* Jung Kook - Please Don't Change */]);
+    ["Ctrl+Z", () => undo()],
+    ["Ctrl+Shift+Z", () => redo()],
+  ]), [hugSelection, undo, redo, /* Jung Kook - Please Don't Change */]);
 
   useLayoutEffect(() => {
     const selection = selectionRef.current;
@@ -176,7 +243,7 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
       if (!action) return;
 
       ev.preventDefault();
-      if (ev.repeat) return;
+      if (ev.repeat && !["Ctrl+Z", "Ctrl+Shift+Z"].includes(kb)) return;
 
       action();
     };
@@ -185,14 +252,33 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
     return () => textarea.removeEventListener("keydown", keyPressHandler);
   }, [actions]);
 
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const inputHandler = () => {
+      addHistoryEntry({
+        source: textarea.value,
+        selection: {
+          start: textarea.selectionStart,
+          end: textarea.selectionEnd,
+        },
+      }, true);
+    };
+
+    textarea.addEventListener("input", inputHandler);
+    return () => textarea.removeEventListener("input", inputHandler);
+  }, [addHistoryEntry]);
+
   return (
     <div className={`wd-editor-toolbar-panel ${className}`} id="wd-editor-toolbar-panel">
       <div className="editor-toolbar-inline-options">
-        {buttonData.map(p => <EditorToolbarButton
+        {buttonData.map((p, idx) => <EditorToolbarButton
           className={p.className}
           onClick={p.onClick}
           title={p.title}
           keybind={p.keybind}
+          key={idx}
         />)}
       </div>
       <div>
