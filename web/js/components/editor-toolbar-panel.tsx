@@ -72,7 +72,6 @@ interface EditorToolbarButtonProps {
   onClick: () => void,
   title: string,
   className?: string,
-  content?: string,
   keybind?: KeybindLiteral,
 }
 
@@ -82,14 +81,16 @@ const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = (
     onClick,
     title,
     className,
-    content,
     keybind,
   }
 ) => {
   return (
-    <a className={className} onClick={onClick} title={keybind ? `${title} (${keybind.replace("Ctrl", ctrlRepr)})` : title}>
-      <span>{content}</span>
-    </a>
+    <button
+      type="button"
+      className={className}
+      onClick={onClick}
+      title={keybind ? `${title} (${keybind.replace("Ctrl", ctrlRepr)})` : title}
+    />
   )
 }
 
@@ -251,6 +252,27 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
     onSourceChange(source);
   }, [onSourceChange, addHistoryEntry]);
 
+  const insertPlain = useCallback((before: string, after: string = "", template: string = "") => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const { selectionStart, selectionEnd, value: taValue } = textarea;
+
+    const newlinePrefix = taValue.startsWith("\n", selectionStart - 1) || selectionStart == 0 ? "" : "\n";
+    const newlineSuffix = taValue.endsWith("\n", selectionEnd + 1) ? "" : "\n";
+
+    const injectable = newlinePrefix + before + template + after + newlineSuffix;
+    const source = taValue.slice(0, selectionStart) + injectable + taValue.slice(selectionEnd);
+    const selection = {
+      start: selectionStart + newlinePrefix.length + before.length,
+      end: selectionStart + newlinePrefix.length + before.length + template.length
+    }
+
+    selectionRef.current = selection;
+    addHistoryEntry({ source, selection });
+    onSourceChange(source);
+  }, [onSourceChange, addHistoryEntry]);
+
   const undo = useCallback(() => {
     const history = editHistoryRef.current;
     if (history.pointer > 0) {
@@ -305,14 +327,15 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
   const inlineFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
     { className: "weditor-footnote", title: "Сноска", onClick: () => insertInline("[[footnote]]", "[[/footnote]]", false) },
     { className: "weditor-span", title: "span-элемент", onClick: () => insertInline("[[span]]", "[[/span]]", false) },
+    { className: "weditor-extlink", title: "Внешняя ссылка", onClick: () => insertInline("[*ссылка ", "]", false) },
+    { className: "weditor-link", title: "Внутренняя ссылка", onClick: () => insertInline("[[[*статья|", "]]]", false) },
   ], [insertInline]);
 
   const miscFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
-    // If it works, it is a good code
-    //   - Alexey "Tsoding" Kutepov
-    { className: "weditor-hr", title: "Горизонтальная линия", onClick: () => insertList("----") },
-    { className: "weditor-clearfloat", title: "Сброс плавающих элементов", onClick: () => insertList("~~~~") },
-  ], [insertList]);
+    { className: "weditor-hr", title: "Горизонтальная линия", onClick: () => insertPlain("----") },
+    { className: "weditor-clearfloat", title: "Сброс плавающих элементов", onClick: () => insertPlain("~~~~") },
+    { className: "weditor-lines", title: "Вставка пустых строк", onClick: () => insertPlain("[[lines ", "]]", "число") },
+  ], [insertPlain]);
 
   const actions: Map<KeybindLiteral, () => void> = useMemo(() => {
     const buttonData = [
@@ -405,7 +428,7 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
 
   return (
     <div className={`wd-editor-toolbar-panel ${className}`} id="wd-editor-toolbar-panel">
-      <div>
+      <div className="editor-toolbar-wrapper">
         <div className="editor-toolbar-options text-format-options">
           {textFormatButtonData.map((p, idx) => <EditorToolbarButton
               className={p.className}
@@ -462,7 +485,7 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
         </div>
       </div>
       <div>
-        <i>{keyboardTrapped ? "Используйте Escape чтобы вернуться к навигации по странице" : "Выделите редактор чтобы использовать панель инструментов"}</i>
+        <p>{keyboardTrapped ? "Используйте Escape чтобы вернуться к навигации по странице" : "Выделите редактор чтобы использовать панель инструментов"}</p>
       </div>
       <div>
         <ul>
@@ -496,23 +519,20 @@ const EditorToolbarPanel = styled(EditorToolbarPanel__Bare)`
   * {
     box-sizing: border-box;
   }
+  div {
+    height: unset;
+  }
   :where(.editor-toolbar-options) {
     display: inline-flex;
     position: relative;
     gap: 2px;
     vertical-align: text-bottom;
   }
-  :where(.editor-toolbar-options + .editor-toolbar-options)::before {
-    content: "";
-    position: absolute;
-    height: 100%;
-    width: 2px;
-    top: 0;
-    left: 0;
-    background-color: #ccc;
+  :where(.editor-toolbar-wrapper) {
+    display: flex;
   }
   
-  a {
+  button {
     height: 22px;
     width: 22px;
     padding: 0;
