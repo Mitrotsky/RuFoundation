@@ -2,6 +2,7 @@ import React from "react";
 import { useEffect, useLayoutEffect, useRef, useCallback, useMemo, useState } from "react"
 import styled from "styled-components"
 import WikidotModal from "~util/wikidot-modal";
+import { v4 as uuid4 } from 'uuid'
 
 
 interface TextSelection {
@@ -207,7 +208,7 @@ const TableModal: EditorModalComponent = (
         </table>
         <br/>
         <div style={{ textWrap: "balance" }}>
-          Подсказка: чтобы выровнять содержимое ячейки, добавьте сразу после
+          <b>Подсказка</b>: чтобы выровнять содержимое ячейки, добавьте сразу после
           маркера <code>||</code> символ <code>&lt;</code>, <code>=</code> или <code>&gt;</code> (для выравнивания по
           левому краю, центру и правому краю соответственно).
         </div>
@@ -223,14 +224,117 @@ const TableModal: EditorModalComponent = (
 // TODO: add link modal
 
 
-// TODO: add tabview modal
+interface TabviewEntry {
+  title: string;
+  id: string;
+}
+
+
+const TabviewModalStyles = styled.div`
+  text-align: center;
+  
+  :is(button, input) { padding-block: 0.1em; }
+  button { padding-inline: 1em; }
+  
+  .tabview-modal-add-new-entry {
+    display: flex;
+    align-items: baseline;
+    column-gap: 0.4em;
+  }
+  .tabview-modal-entry-container {
+    height: 128px;
+    max-height: 128px;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+  .tabview-modal-entry-container-grid {
+    display: grid;
+    grid-template-columns: 4ch auto min-content;
+    row-gap: 0.1em;
+  }
+  .tabview-modal-entry-container-grid-row {
+    display: grid;
+    grid-column: -1 / 1;
+    grid-template-columns: subgrid;
+    align-items: baseline;
+    justify-items: end;
+    column-gap: 1em;
+  }
+`;
+
+
+const TabviewModal: EditorModalComponent = (
+  {
+    onCancel,
+    onSubmit,
+  }
+) => {
+  const [entryArray, setEntryArray] = useState<TabviewEntry[]>([]);
+  const [titleInput, setTitleInput] = useState<string>("");
+
+  const addTitleEntry = useCallback(() => {
+    const input = titleInput.trim();
+    if (!input) return;
+    setEntryArray(prevState => [...prevState, { title: input, id: uuid4() }]);
+    setTitleInput("");
+  }, [setEntryArray, titleInput, setTitleInput]);
+
+  const removeTitleEntry = useCallback((entryId: string) => {
+    setEntryArray(prevState => prevState.filter(entry => entry.id !== entryId));
+  }, [setEntryArray]);
+
+  const createTabview = useCallback((): string => {
+    if (!entryArray.length) return "";
+    const tabs = entryArray.map(entry => `[[tab ${entry.title}]]\n\n[[/tab]]`);
+    return "[[tabview]]\n" + tabs.join("\n") + "\n[[/tabview]]";
+  }, [entryArray]);
+
+  return (
+    <EditorModal onSubmit={() => onSubmit(createTabview())} onCancel={() => onCancel()}>
+      <TabviewModalStyles>
+        <p><b>Мастер вставки вкладок</b></p>
+        <div className="tabview-modal-add-new-entry">
+          <label htmlFor="wd-ed-tabviewwizard-input">Заголовок:</label>
+          <input
+            className="text"
+            id="wd-ed-tabviewwizard-input"
+            type="text"
+            value={titleInput}
+            onChange={e => setTitleInput(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={addTitleEntry}
+          >Добавить
+          </button>
+        </div>
+        <hr className="buttons-hr"/>
+        <div className="tabview-modal-entry-container">
+          <div className="tabview-modal-entry-container-grid">
+            {entryArray.map((item, idx) => (
+              <div className="tabview-modal-entry-container-grid-row" key={item.id}>
+                <span>{`${idx + 1}.`}</span>
+                <span>{item.title}</span>
+                <button
+                  type="button"
+                  onClick={() => removeTitleEntry(item.id)}
+                >×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </TabviewModalStyles>
+    </EditorModal>
+  )
+};
 
 
 // TODO: add ... modal
 
 
 type ModalName =
-  | "table";
+  | "table"
+  | "tabview";
 
 
 interface EditorModalState {
@@ -241,6 +345,7 @@ interface EditorModalState {
 
 const EDIT0R_MODALS: Record<ModalName, EditorModalComponent> = {
   table: TableModal,
+  tabview: TabviewModal,
 };
 
 
@@ -538,6 +643,7 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
 
   const wizardButtonData: EditorToolbarButtonProps[] = useMemo(() => [
     { className: "weditor-table", title: "Мастер вставки таблиц", onClick: () => openModal("table") },
+    { className: "weditor-tabview", title: "Мастер вставки вкладок", onClick: () => openModal("tabview") },
   ], [openModal]);
 
   const toolbarButtonGroups: ToolbarGroup[] = useMemo(() => [
@@ -680,6 +786,7 @@ const EditorToolbarPanel = styled(EditorToolbarPanel__Bare)`
   }
   :where(.editor-toolbar-wrapper) {
     display: flex;
+    flex-wrap: wrap;
   }
   
   button {
