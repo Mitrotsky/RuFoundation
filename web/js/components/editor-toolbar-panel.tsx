@@ -1,6 +1,7 @@
-import React from 'react'
-import { useEffect, useLayoutEffect, useRef, useCallback, useMemo, useState } from 'react'
-import styled from 'styled-components'
+import React from "react";
+import { useEffect, useLayoutEffect, useRef, useCallback, useMemo, useState } from "react"
+import styled from "styled-components"
+import WikidotModal from "~util/wikidot-modal";
 
 
 interface TextSelection {
@@ -60,6 +61,22 @@ interface EditorToolbarPanelProps {
 }
 
 
+interface EditorModalProps {
+  onSubmit: () => void,
+  onCancel: () => void,
+  children: React.ReactNode,
+}
+
+
+interface EditorModalComponentProps {
+  onSubmit: (result: string) => void,
+  onCancel: () => void,
+}
+
+
+type EditorModalComponent = React.FC<EditorModalComponentProps>;
+
+
 const isAppleDevice = /Mac|iPhone|iPad/.test(navigator.userAgent);
 const ctrlRepr = isAppleDevice ? "⌘" : "Ctrl";
 
@@ -90,6 +107,143 @@ function eventToLiteral(ev: KeyboardEvent): KeybindLiteral | null {
 }
 
 
+const EditorModal: React.FC<EditorModalProps> = (
+  {
+    onSubmit,
+    onCancel,
+    children
+  }
+) => {
+  useEffect(() => {
+    const keyPressHandler = (ev: KeyboardEvent) => {
+      if (ev.code === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", keyPressHandler);
+    return () => document.removeEventListener("keydown", keyPressHandler);
+  }, [onCancel]);
+
+  return (
+    <WikidotModal buttons={[
+      { title: "Отменить", onClick: onCancel },
+      { title: "Вставить код", onClick: onSubmit },
+    ]}>
+      {children}
+    </WikidotModal>
+  );
+};
+
+
+const TableModal: EditorModalComponent = (
+  {
+    onCancel,
+    onSubmit,
+  }
+) => {
+  const [rows, setRows] = useState<number>(2);
+  const [columns, setColumns] = useState<number>(2);
+  const [useHeader, setUseHeader] = useState<boolean>(false);
+
+  const MIN_ROWS = 2;
+  const MIN_COLUMNS = 2;
+
+  const createTableRow = (length: number, isHeader: boolean = false): string => {
+    const rowArray: string[] = [];
+    for (let i = 0; i < length; i++) rowArray.push(`||${isHeader ? "~" : ""} Ячейка `);
+    return rowArray.join("") + "||";
+  }
+
+  const createTable = (): string => {
+    const totalRows = Number.isNaN(rows) ? MIN_ROWS : Math.min(99, Math.max(rows, MIN_ROWS));
+    const totalColumns = Number.isNaN(columns) ? MIN_COLUMNS : Math.min(99, Math.max(columns, MIN_COLUMNS));
+
+    const tableRows: string[] = [];
+    for (let i = 0; i < totalRows; i++) tableRows.push(createTableRow(totalColumns));
+    if (useHeader) tableRows[0] = createTableRow(totalColumns, true);
+    return tableRows.join("\n");
+  };
+
+  return (
+    <EditorModal onSubmit={() => onSubmit(createTable())} onCancel={() => onCancel()} >
+      <div style={{ textAlign: "center" }}>
+        <p><b>Мастер вставки таблиц</b></p>
+
+        <table className="form">
+          <tbody>
+            <tr>
+              <td><label htmlFor="wd-ed-tablewizard-rows">Количество строк:</label></td>
+              <td><input
+                className="text"
+                id="wd-ed-tablewizard-rows"
+                type="number"
+                value={rows}
+                min={MIN_ROWS} max={99}
+                style={{ minWidth: "4ch" }}
+                onChange={e => setRows(e.target.valueAsNumber)}
+              /></td>
+            </tr>
+            <tr>
+              <td><label htmlFor="wd-ed-tablewizard-columns">Количество столбцов:</label></td>
+              <td><input
+                className="text"
+                id="wd-ed-tablewizard-columns"
+                type="number"
+                value={columns}
+                min={MIN_COLUMNS} max={99}
+                style={{ minWidth: "4ch" }}
+                onChange={e => setColumns(e.target.valueAsNumber)}
+              /></td>
+            </tr>
+            <tr>
+              <td><label htmlFor="wd-ed-tablewizard-headers">Первая строка как заголовок:</label></td>
+              <td><input
+                className="checkbox"
+                id="wd-ed-tablewizard-headers"
+                type="checkbox"
+                checked={useHeader}
+                onChange={e => setUseHeader(e.target.checked)}
+              /></td>
+            </tr>
+          </tbody>
+        </table>
+        <br/>
+        <div style={{ textWrap: "balance" }}>
+          Подсказка: чтобы выровнять содержимое ячейки, добавьте сразу после
+          маркера <code>||</code> символ <code>&lt;</code>, <code>=</code> или <code>&gt;</code> (для выравнивания по
+          левому краю, центру и правому краю соответственно).
+        </div>
+      </div>
+    </EditorModal>
+  );
+};
+
+
+// TODO: add image modal
+
+
+// TODO: add link modal
+
+
+// TODO: add tabview modal
+
+
+// TODO: add ... modal
+
+
+type ModalName =
+  | "table";
+
+
+interface EditorModalState {
+  name: ModalName,
+  selection: TextSelection,
+}
+
+
+const EDIT0R_MODALS: Record<ModalName, EditorModalComponent> = {
+  table: TableModal,
+};
+
+
 const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = (
   {
     onClick,
@@ -105,15 +259,16 @@ const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = (
       onClick={onClick}
       title={keybind ? `${title} (${keybind.replace("Ctrl", ctrlRepr)})` : title}
     />
-  )
-}
+  );
+};
 
 
 const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaRef, onSourceChange, className }) => {
   const [keyboardTrapped, setKeyboardTrapped] = useState<boolean>(false);
+  const [currentModal, setCurrentModal] = useState<EditorModalState | null>(null);
 
   const selectionRef = useRef<TextSelection | null>(null);
-  const editHistoryRef = useRef<EditHistory>({ entries: [], pointer: -1, lastEdit: 0, lastEditBatch: 0, });
+  const editHistoryRef = useRef<EditHistory>({ entries: [], pointer: -1, lastEdit: 0, lastEditBatch: 0 });
 
   // Methods
 
@@ -276,6 +431,47 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
     applyChanges(source, selection);
   }, [applyChanges]);
 
+  const openModal = useCallback((modalName: ModalName) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const { selectionStart, selectionEnd } = textarea;
+
+    setCurrentModal({
+      name: modalName,
+      selection: {
+        start: selectionStart,
+        end: selectionEnd,
+      }
+    });
+  }, [setCurrentModal]);
+
+  const closeModal = useCallback(() => {
+    if (currentModal) selectionRef.current = currentModal.selection;
+    setCurrentModal(null);
+  }, [setCurrentModal, currentModal]);
+
+  const submitModal = useCallback((result: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea || !currentModal) return;
+
+    const { start, end } = currentModal.selection;
+
+    const source = textarea.value.slice(0, start) + result + textarea.value.slice(end);
+    const selection = {
+      start: start,
+      end: start + result.length,
+    };
+    closeModal();
+    applyChanges(source, selection);
+  }, [currentModal, closeModal, applyChanges]);
+
+  const renderModal = useCallback(() => {
+    if (!currentModal) return;
+    const EditorModal = EDIT0R_MODALS[currentModal.name];
+    return <EditorModal onSubmit={submitModal} onCancel={closeModal} />
+  }, [currentModal, submitModal, closeModal]);
+
   const undo = useCallback(() => {
     const history = editHistoryRef.current;
     if (history.pointer > 0) {
@@ -340,6 +536,10 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
     { className: "weditor-lines", title: "Вставка пустых строк", onClick: () => insertPlain("[[lines ", "]]", "число") },
   ], [insertPlain]);
 
+  const wizardButtonData: EditorToolbarButtonProps[] = useMemo(() => [
+    { className: "weditor-table", title: "Мастер вставки таблиц", onClick: () => openModal("table") },
+  ], [openModal]);
+
   const toolbarButtonGroups: ToolbarGroup[] = useMemo(() => [
     { className: "text-format-options", entry: textFormatButtonData },
     { className: "paragraph-format-options", entry: paragraphFormatButtonData },
@@ -347,7 +547,8 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
     { className: "block-format-options", entry: blockFormatButtonData },
     { className: "inline-format-options", entry: inlineFormatButtonData },
     { className: "misc-format-options", entry: miscFormatButtonData },
-  ], [textFormatButtonData, paragraphFormatButtonData, listFormatButtonData, blockFormatButtonData, inlineFormatButtonData, miscFormatButtonData]);
+    { className: "wizard-format-options", entry: wizardButtonData },
+  ], [textFormatButtonData, paragraphFormatButtonData, listFormatButtonData, blockFormatButtonData, inlineFormatButtonData, miscFormatButtonData, wizardButtonData]);
 
   const actions: Map<KeybindLiteral, () => void> = useMemo(() => {
     const keybindActionsMap: Map<KeybindLiteral, () => void> = new Map([
@@ -457,9 +658,10 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
       <div>
         <p>{keyboardTrapped ? "Используйте Escape чтобы вернуться к навигации по странице" : "Выделите редактор чтобы использовать панель инструментов"}</p>
       </div>
+      {renderModal()}
     </div>
   );
-}
+};
 
 
 const EditorToolbarPanel = styled(EditorToolbarPanel__Bare)`
