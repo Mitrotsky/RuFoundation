@@ -9,7 +9,7 @@ import useConstCallback from '../util/const-callback'
 import Loader from '../util/loader'
 import { removeMessage, showPreviewMessage } from '../util/wikidot-message'
 import WikidotModal from '../util/wikidot-modal'
-import EditorToolbarPanel from '~components/editor-toolbar-panel'
+import EditorToolbarPanel from '~components/editor-toolbar/editor-toolbar-panel'
 
 interface Props {
   pageId: string
