@@ -108,6 +108,17 @@ function eventToLiteral(ev: KeyboardEvent): KeybindLiteral | null {
 }
 
 
+// TODO: modals probably should live in their own files but rn I have no idea where can I put them
+
+
+const EditorModalStyleBase = styled.div`
+  :is(button, input) { padding-block: 0.1em; }
+  button { padding-inline: 1em; }
+  
+  .editor-modal-header { text-align: center; }
+`;
+
+
 const EditorModal: React.FC<EditorModalProps> = (
   {
     onSubmit,
@@ -164,7 +175,8 @@ const TableModal: EditorModalComponent = (
   };
 
   return (
-    <EditorModal onSubmit={() => onSubmit(createTable())} onCancel={() => onCancel()} >
+    <EditorModal onSubmit={() => onSubmit(createTable())} onCancel={() => onCancel()}>
+      {/* TODO: update styles */}
       <div style={{ textAlign: "center" }}>
         <p><b>Мастер вставки таблиц</b></p>
 
@@ -221,7 +233,142 @@ const TableModal: EditorModalComponent = (
 // TODO: add image modal
 
 
-// TODO: add link modal
+type LinkType = "external" | "internal";
+
+
+const LinkModalStyle = styled(EditorModalStyleBase)`
+  fieldset {
+    display: grid;
+    gap: 0.4em;
+    border: 1px solid #aaa;
+    margin: 1em auto;
+    width: fit-content;
+  }
+  fieldset label {
+    display: flex;
+    align-items: center;
+    column-gap: 0.4em;
+  }
+  fieldset input { 
+    margin-block: 0;
+    margin-left: 0;
+  }
+  
+  .link-modal-main-content {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.1em 0.4em;
+  }
+`;
+
+
+const LinkModal: EditorModalComponent = (
+  {
+    onCancel,
+    onSubmit,
+  }
+) => {
+  const [linkType, setLinkType] = useState<LinkType>("external");
+  const [isNewPage, setIsNewPage] = useState<boolean>(false);
+  const [link, setLink] = useState<string>("");
+  const [title, setTitle] = useState<string>("");
+
+  // TODO: move some of these functions outside the module
+  const passedURL = useMemo((): URL | null => URL.parse(link.trim(), window.location.origin), [link]);
+
+  const isSameDomain = useMemo((): boolean => {
+    const domain = window.location.hostname;
+    const result = passedURL ? passedURL.hostname.split(".").slice(-2).join(".") : "";
+    return domain === result;
+  }, [passedURL]);
+
+  const createExternalLink = useCallback((): string => {
+    return `[${isNewPage ? "*" : ""}${link.trim()} ${title.trim() || "Ссылка"}]`;
+  }, [link, title, isNewPage]);
+
+  const createInternalLink = useCallback((): string => {
+    const pageId = (isSameDomain && passedURL) ? passedURL.pathname.split("/")[1] : link.trim();
+    return `[[[${isNewPage ? "*" : ""}${pageId}|${title.trim()}]]]`;
+  }, [link, isSameDomain, passedURL, title, isNewPage]);
+
+  const createLink = useCallback((): string => {
+    const linkFn: Record<LinkType, () => string> = {
+      external: createExternalLink,
+      internal: createInternalLink,
+    };
+    return linkFn[linkType]();
+  }, [linkType, createExternalLink, createInternalLink]);
+
+  return (
+    <EditorModal onSubmit={() => onSubmit(createLink())} onCancel={() => onCancel()} >
+      <LinkModalStyle>
+        <p className="editor-modal-header"><b>Мастер вставки ссылок</b></p>
+        <fieldset>
+          <legend>Тип вставляемой ссылки</legend>
+          <div className="link-modal-radio-options">
+            <label>
+              <input
+                type="radio"
+                name="wd-ed-linkwizard-type"
+                value="external"
+                checked={linkType === "external"}
+                onChange={() => setLinkType("external")}
+              />
+              Внешняя ссылка
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="wd-ed-linkwizard-type"
+                value="internal"
+                checked={linkType === "internal"}
+                onChange={() => setLinkType("internal")}
+              />
+              Внутренняя ссылка
+            </label>
+          </div>
+          <label className="editor-modal-grid-spanner">
+            Открывать в новой вкладке:
+            <input
+              type="checkbox"
+              checked={isNewPage}
+              onChange={(ev) => setIsNewPage(ev.target.checked)}
+            />
+          </label>
+        </fieldset>
+        <div className="link-modal-main-content">
+          <label htmlFor="wd-ed-linkwizard-link">Ссылка на страницу: </label>
+          <input
+            className="text"
+            type="text"
+            id="wd-ed-linkwizard-link"
+            placeholder="https://example.com/"
+            size={28}
+            onChange={(ev) => setLink(ev.target.value)}
+          />
+          <label htmlFor="wd-ed-linkwizard-text">Текст ссылки: </label>
+          <input
+            className="text"
+            type="text"
+            id="wd-ed-linkwizard-text"
+            placeholder="Ссылка"
+            size={28}
+            value={title}
+            onChange={(ev) => setTitle(ev.target.value)}
+          />
+        </div>
+        <div>
+          {(linkType === "internal" && !isSameDomain) && (<p>
+            Введённая ссылка ведёт на внешний сайт. Будет вставлена полная ссылка.
+          </p>)}
+          {(linkType === "external" && isSameDomain) && (<p>
+            Введённая ссылка ведёт на этот сайт. Используйте опцию «Внутренняя ссылка».
+          </p>)}
+        </div>
+      </LinkModalStyle>
+    </EditorModal>
+  );
+};
 
 
 interface TabviewEntry {
@@ -230,11 +377,8 @@ interface TabviewEntry {
 }
 
 
-const TabviewModalStyles = styled.div`
+const TabviewModalStyle = styled(EditorModalStyleBase)`
   text-align: center;
-  
-  :is(button, input) { padding-block: 0.1em; }
-  button { padding-inline: 1em; }
   
   .tabview-modal-add-new-entry {
     display: flex;
@@ -291,7 +435,7 @@ const TabviewModal: EditorModalComponent = (
 
   return (
     <EditorModal onSubmit={() => onSubmit(createTabview())} onCancel={() => onCancel()}>
-      <TabviewModalStyles>
+      <TabviewModalStyle>
         <p><b>Мастер вставки вкладок</b></p>
         <div className="tabview-modal-add-new-entry">
           <label htmlFor="wd-ed-tabviewwizard-input">Заголовок:</label>
@@ -323,7 +467,7 @@ const TabviewModal: EditorModalComponent = (
             ))}
           </div>
         </div>
-      </TabviewModalStyles>
+      </TabviewModalStyle>
     </EditorModal>
   )
 };
@@ -334,7 +478,8 @@ const TabviewModal: EditorModalComponent = (
 
 type ModalName =
   | "table"
-  | "tabview";
+  | "tabview"
+  | "link";
 
 
 interface EditorModalState {
@@ -346,6 +491,7 @@ interface EditorModalState {
 const EDIT0R_MODALS: Record<ModalName, EditorModalComponent> = {
   table: TableModal,
   tabview: TabviewModal,
+  link: LinkModal,
 };
 
 
@@ -644,6 +790,7 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({ textareaR
   const wizardButtonData: EditorToolbarButtonProps[] = useMemo(() => [
     { className: "weditor-table", title: "Мастер вставки таблиц", onClick: () => openModal("table") },
     { className: "weditor-tabview", title: "Мастер вставки вкладок", onClick: () => openModal("tabview") },
+    { className: "weditor-pagelinkwiz", title: "Мастер вставки ссылок", onClick: () => openModal("link") },
   ], [openModal]);
 
   const toolbarButtonGroups: ToolbarGroup[] = useMemo(() => [
