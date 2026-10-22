@@ -5,6 +5,7 @@ import type { EditorModalComponent } from "~components/editor-toolbar/modals/bas
 import TableModal from "~components/editor-toolbar/modals/table-modal";
 import TabviewModal from "~components/editor-toolbar/modals/tabview-modal";
 import LinkModal from "~components/editor-toolbar/modals/link-modal";
+import ImageModal from "~components/editor-toolbar/modals/image-modal";
 
 
 interface TextSelection {
@@ -61,6 +62,7 @@ interface EditorToolbarPanelProps {
   readonly textareaRef: React.RefObject<HTMLTextAreaElement>,
   onSourceChange: (text: string) => void,
   className?: string,
+  pageId?: string,
 }
 
 
@@ -99,7 +101,7 @@ function eventToLiteral(ev: KeyboardEvent): KeybindLiteral | null {
 // TODO: add ... modal
 
 
-type ModalName = "table" | "tabview" | "link";
+type ModalName = "table" | "tabview" | "link" | "image";
 
 
 interface EditorModalState {
@@ -112,6 +114,7 @@ const EDIT0R_MODALS: Record<ModalName, EditorModalComponent> = {
   table: TableModal,
   tabview: TabviewModal,
   link: LinkModal,
+  image: ImageModal,
 };
 
 
@@ -136,6 +139,7 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
   textareaRef,
   onSourceChange,
   className,
+  pageId,
 }) => {
   const [keyboardTrapped, setKeyboardTrapped] = useState<boolean>(false);
   const [currentModal, setCurrentModal] = useState<EditorModalState | null>(null);
@@ -376,7 +380,7 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
   const modalRender = useCallback(() => {
     if (!currentModal) return;
     const EditorModal = EDIT0R_MODALS[currentModal.name];
-    return <EditorModal onSubmit={modalSubmit} onCancel={modalClose}/>;
+    return <EditorModal onSubmit={modalSubmit} onCancel={modalClose} pageId={pageId} />;
   }, [currentModal, modalSubmit, modalClose]);
   
   const undo = useCallback(() => {
@@ -579,6 +583,11 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
       className: "weditor-pagelinkwiz",
       title: "Мастер вставки ссылок",
       onClick: () => modalOpen("link"),
+    },
+    {
+      className: "weditor-imagewiz",
+      title: "Мастер вставки изображений",
+      onClick: () => modalOpen("image"),
     },
   ], [modalOpen]);
   

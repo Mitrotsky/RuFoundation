@@ -10,25 +10,6 @@ type LinkType = "external" | "internal";
 
 
 const LinkModalStyle = styled(EditorModalStyleBase)`
-  fieldset {
-    display: grid;
-    gap: 0.4em;
-    border: 1px solid #aaa;
-    margin: 1em auto;
-    width: fit-content;
-  }
-
-  fieldset label {
-    display: flex;
-    align-items: center;
-    column-gap: 0.4em;
-  }
-
-  fieldset input {
-    margin-block: 0;
-    margin-left: 0;
-  }
-
   .link-modal-main-content {
     display: grid;
     grid-template-columns: max-content 1fr;
@@ -77,10 +58,10 @@ const LinkModal: EditorModalComponent = ({
   return (
     <EditorModal onSubmit={() => onSubmit(createLink())} onCancel={() => onCancel()}>
       <LinkModalStyle>
-        <p className="editor-modal-header"><b>Мастер вставки ссылок</b></p>
+        <p className="editor-modal-header">Мастер вставки ссылок</p>
         <fieldset>
           <legend>Тип вставляемой ссылки</legend>
-          <div className="link-modal-radio-options">
+          <div>
             <label>
               <input
                 type="radio"
@@ -102,7 +83,7 @@ const LinkModal: EditorModalComponent = ({
               Внутренняя ссылка
             </label>
           </div>
-          <label className="editor-modal-grid-spanner">
+          <label>
             Открывать в новой вкладке:
             <input
               type="checkbox"

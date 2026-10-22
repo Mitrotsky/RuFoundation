@@ -361,7 +361,7 @@ const ArticleEditor: React.FC<Props> = ({
           </tbody>
         </table>
         {/* This is not supported right now but we have to add empty div for BHL */}
-        <EditorToolbarPanel textareaRef={textareaRef} onSourceChange={onSourceChange} />
+        <EditorToolbarPanel textareaRef={textareaRef} onSourceChange={onSourceChange} pageId={pageId}/>
         <div className={`editor-area ${loading ? 'loading' : ''}`}>
           {!useAdvancedEditor && (
             <textarea
