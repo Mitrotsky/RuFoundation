@@ -360,8 +360,17 @@ const ArticleEditor: React.FC<Props> = ({
             </tr>
           </tbody>
         </table>
-        {/* This is not supported right now but we have to add empty div for BHL */}
-        <EditorToolbarPanel textareaRef={textareaRef} onSourceChange={onSourceChange} pageId={pageId}/>
+        {/* This is supported now but in a bit janky way */}
+        {!useAdvancedEditor ? (
+          <EditorToolbarPanel
+            textareaRef={textareaRef}
+            onSourceChange={onSourceChange}
+            pageId={pageId}
+            disabled={loading || saving}
+          />
+        ) : (
+          <div className="wd-editor-toolbar-panel" id="wd-editor-toolbar-panel" />
+        )}
         <div className={`editor-area ${loading ? 'loading' : ''}`}>
           {!useAdvancedEditor && (
             <textarea

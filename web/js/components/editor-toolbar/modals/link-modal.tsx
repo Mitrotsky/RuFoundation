@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import EditorModal from "~components/editor-toolbar/modals/base-modal";
 import { EditorModalStyleBase } from "~components/editor-toolbar/modals/base-modal";
 import type { EditorModalComponent } from "~components/editor-toolbar/modals/base-modal";
+import { isInternalLink } from "~util/domain-util";
 
 
 type LinkType = "external" | "internal";
@@ -17,14 +18,9 @@ const LinkModal: EditorModalComponent = ({
   const [link, setLink] = useState<string>("");
   const [title, setTitle] = useState<string>("");
   
-  // TODO: move some of these functions outside the module
   const passedURL = useMemo((): URL | null => URL.parse(link.trim(), window.location.origin), [link]);
   
-  const isSameDomain = useMemo((): boolean => {
-    const domain = window.location.hostname;
-    const result = passedURL ? passedURL.hostname.split(".").slice(-2).join(".") : "";
-    return domain === result;
-  }, [passedURL]);
+  const isSameDomain = useMemo((): boolean => isInternalLink(passedURL), [passedURL]);
   
   const createExternalLink = useCallback((): string => {
     return `[${isNewPage ? "*" : ""}${link.trim()} ${title.trim() || "Ссылка"}]`;
@@ -108,12 +104,16 @@ const LinkModal: EditorModalComponent = ({
           </label>
         </div>
         <div>
-          {(linkType === "internal" && !isSameDomain) && (<p>
-            Введённая ссылка ведёт на внешний сайт. Будет вставлена полная ссылка.
-          </p>)}
-          {(linkType === "external" && isSameDomain) && (<p>
-            Введённая ссылка ведёт на этот сайт. Используйте опцию «Внутренняя ссылка».
-          </p>)}
+          {(linkType === "internal" && link.trim() && !isSameDomain) && (
+            <p>
+              Введённая ссылка ведёт на внешний сайт. Будет вставлена полная ссылка.
+            </p>
+          )}
+          {(linkType === "external" && link.trim() && isSameDomain) && (
+            <p>
+              Введённая ссылка ведёт на этот сайт. Используйте опцию «Внутренняя ссылка».
+            </p>
+          )}
         </div>
       </EditorModalStyleBase>
     </EditorModal>

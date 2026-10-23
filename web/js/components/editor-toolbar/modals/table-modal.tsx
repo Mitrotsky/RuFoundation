@@ -25,6 +25,22 @@ const TableModalStyle = styled(EditorModalStyleBase)`
 `;
 
 
+const MIN_ROWS = 2;
+const MIN_COLUMNS = 2;
+const MAX_ROWS = 99;
+const MAX_COLUMNS = 99;
+
+
+// TODO: create separate file for some of the math functions and remove functions scattered across this whole repo
+//  a job for the future me or someone else lol
+// - web/js/util/tooltip.tsx @ 9:1
+// - web/js/util/user-popover.ts @ 27:1
+// - web/js/forum/thread-pagination.tsx @ 56:1
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
+
 const TableModal: EditorModalComponent = ({
   onCancel,
   onSubmit,
@@ -33,9 +49,6 @@ const TableModal: EditorModalComponent = ({
   const [columns, setColumns] = useState<number>(2);
   const [useHeader, setUseHeader] = useState<boolean>(false);
   
-  const MIN_ROWS = 2;
-  const MIN_COLUMNS = 2;
-  
   const createTableRow = (length: number, isHeader: boolean = false): string => {
     const rowArray: string[] = [];
     for (let i = 0; i < length; i++) rowArray.push(`||${isHeader ? "~" : ""} Ячейка `);
@@ -43,8 +56,8 @@ const TableModal: EditorModalComponent = ({
   };
   
   const createTable = (): string => {
-    const totalRows = Number.isNaN(rows) ? MIN_ROWS : Math.min(99, Math.max(rows, MIN_ROWS));
-    const totalColumns = Number.isNaN(columns) ? MIN_COLUMNS : Math.min(99, Math.max(columns, MIN_COLUMNS));
+    const totalRows = Number.isNaN(rows) ? MIN_ROWS : clamp(rows, MIN_ROWS, MAX_ROWS);
+    const totalColumns = Number.isNaN(columns) ? MIN_COLUMNS : clamp(columns, MIN_COLUMNS, MAX_COLUMNS);
     
     const tableRows: string[] = [];
     for (let i = 0; i < totalRows; i++) tableRows.push(createTableRow(totalColumns));
@@ -65,6 +78,9 @@ const TableModal: EditorModalComponent = ({
               name="wd-ed-tablewizard-rows"
               value={rows}
               onChange={ev => setRows(ev.target.valueAsNumber)}
+              onBlur={() => {
+                setRows(Number.isNaN(rows) ? MIN_ROWS : clamp(rows, MIN_ROWS, MAX_ROWS));
+              }}
               placeholder={`${MIN_ROWS}`}
             />
           </label>
@@ -75,6 +91,9 @@ const TableModal: EditorModalComponent = ({
               name="wd-ed-tablewizard-columns"
               value={columns}
               onChange={ev => setColumns(ev.target.valueAsNumber)}
+              onBlur={() => {
+                setColumns(Number.isNaN(columns) ? MIN_COLUMNS : clamp(columns, MIN_COLUMNS, MAX_COLUMNS));
+              }}
               placeholder={`${MIN_COLUMNS}`}
             />
           </label>

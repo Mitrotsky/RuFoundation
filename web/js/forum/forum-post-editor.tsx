@@ -8,6 +8,7 @@ import { fetchAllUsers } from '../api/user'
 import useConstCallback from '../util/const-callback'
 import Loader from '../util/loader'
 import WikidotModal from '../util/wikidot-modal'
+import EditorToolbarPanel from "~components/editor-toolbar/editor-toolbar-panel";
 
 export interface ForumPostPreviewData {
   name: string
@@ -88,6 +89,8 @@ const ForumPostEditor: React.FC<Props> = ({
 
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<Monaco | null>(null)
+  
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const monacoOptions: editor.IStandaloneEditorConstructionOptions = {
     minimap: { enabled: false },
@@ -341,8 +344,12 @@ const ForumPostEditor: React.FC<Props> = ({
             )}
           </tbody>
         </table>
-        {/* This is not supported right now but we have to add empty div for BHL */}
-        <div id="wd-editor-toolbar-panel" className="wd-editor-toolbar-panel" />
+        {/* This is supported now but in a bit janky way */}
+        <EditorToolbarPanel
+          textareaRef={textareaRef}
+          onSourceChange={onSourceChange}
+          disabled={loading || saving}
+        />
         <div className={`w-editor-area ${loading ? 'loading' : ''}`}>
           {!useAdvancedEditor && (
             <textarea
@@ -354,6 +361,7 @@ const ForumPostEditor: React.FC<Props> = ({
               cols={60}
               style={{ width: '95%' }}
               disabled={loading || saving}
+              ref={textareaRef}
             />
           )}
           {useAdvancedEditor && (

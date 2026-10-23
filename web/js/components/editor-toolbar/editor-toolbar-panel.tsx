@@ -49,6 +49,7 @@ interface EditorToolbarButtonProps {
   title: string,
   className?: string,
   keybind?: KeybindLiteral,
+  disabled?: boolean,
 }
 
 
@@ -63,6 +64,7 @@ interface EditorToolbarPanelProps {
   onSourceChange: (text: string) => void,
   className?: string,
   pageId?: string,
+  disabled?: boolean,
 }
 
 
@@ -123,6 +125,7 @@ const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = ({
   title,
   className,
   keybind,
+  disabled,
 }) => {
   return (
     <button
@@ -130,6 +133,7 @@ const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = ({
       className={className}
       onClick={onClick}
       title={keybind ? `${title} (${keybind.replace("Ctrl", ctrlRepr)})` : title}
+      disabled={disabled}
     />
   );
 };
@@ -140,6 +144,7 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
   onSourceChange,
   className,
   pageId,
+  disabled,
 }) => {
   const [keyboardTrapped, setKeyboardTrapped] = useState<boolean>(false);
   const [currentModal, setCurrentModal] = useState<EditorModalState | null>(null);
@@ -715,13 +720,14 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
       <div className="editor-toolbar-wrapper">
         {toolbarButtonGroups.map(buttonGroup => (
           <div className={`editor-toolbar-options ${buttonGroup.className}`} key={buttonGroup.className}>
-            {buttonGroup.entry.map((button, idx) => (
+            {buttonGroup.entry.map(button => (
               <EditorToolbarButton
                 className={button.className}
                 onClick={button.onClick}
                 title={button.title}
                 keybind={button.keybind}
-                key={`${buttonGroup.className}-${idx}`}
+                key={`${buttonGroup.className}`}
+                disabled={disabled}
               />
             ))}
           </div>

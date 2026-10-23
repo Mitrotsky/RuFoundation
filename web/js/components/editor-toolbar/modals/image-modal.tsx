@@ -1,5 +1,5 @@
-import React, { useSyncExternalStore } from "react";
-import { useCallback, useState, useEffect } from "react";
+import React from "react";
+import { useCallback, useState, useEffect, useSyncExternalStore } from "react";
 import styled from "styled-components";
 import EditorModal from "~components/editor-toolbar/modals/base-modal";
 import { EditorModalStyleBase } from "~components/editor-toolbar/modals/base-modal";
@@ -8,6 +8,7 @@ import { APIError } from "~util/fetch-util";
 import type { EditorModalComponent } from "~components/editor-toolbar/modals/base-modal";
 import type { ArticleFile } from "~api/files";
 import Loader from "~util/loader";
+import { isInternalLink } from "~util/domain-util";
 
 
 type FileLoadingStaus = "pending" | "success" | "error";
@@ -115,6 +116,15 @@ const ImageModalStyle = styled(EditorModalStyleBase)`
 `;
 
 
+const LEGACY_ALIGN: Record<ImageAlign, string> = {
+  left: "limg",
+  center: "cimg",
+  right: "rimg",
+};
+const DEFAULT_WIDTH = "300px";
+const DEFAULT_FILE_LINK = "Ссылка";
+
+
 const ImageModal: EditorModalComponent = ({
   onSubmit,
   onCancel,
@@ -122,37 +132,47 @@ const ImageModal: EditorModalComponent = ({
 }) => {
   const fileStoreState = useSyncExternalStore(fileStore.subscribe, fileStore.getSnapshot);
   const [imageLinkType, setImageLinkType] = useState<ImageLinkType>("freeLink");
-  
-  const [selectedFile, setSelectedFile] = useState<string>("");
+  const [selectedFileLink, setSelectedFileLink] = useState<string>("");
   const [markupType, setMarkupType] = useState<ImageMarkupType>("include");
   const [caption, setCaption] = useState<string>("");
   const [align, setAlign] = useState<ImageAlign>("right");
-  const [width, setWidth] = useState<string>("300px");
+  const [width, setWidth] = useState<string>("");
+  
+  const getProcessedInputs = useCallback(() => {
+    return {
+      fileLink: encodeURI(selectedFileLink.trim() || DEFAULT_FILE_LINK),
+      align: align,
+      caption: caption.trim(),
+      width: width.trim() || DEFAULT_WIDTH,
+    }
+  }, [selectedFileLink, align, caption, width]);
   
   const createLegacyImage = useCallback((): string => {
-    const alignMap: Record<ImageAlign, string> = {
-      left: "limg",
-      center: "cimg",
-      right: "rimg",
-    };
-    const captionTrimmed = caption.trim();
-    const top = `[[div_ class="${alignMap[align]}"]]\n[[image ${encodeURI(selectedFile.trim())} style="width: ${width.trim() || "300px"}"]]\n`;
-    const content = captionTrimmed ? `[[span]]${captionTrimmed.replaceAll("\n", " _\n")}[[/span]]\n` : "";
-    const bottom = "[[/div]]";
+    const { fileLink, align, caption, width } = getProcessedInputs();
     
-    return top + content + bottom;
-  }, [caption, width, selectedFile, align]);
+    const lines: string[] = [
+      `[[div_ class="${LEGACY_ALIGN[align]}"]]`,
+      `[[image ${fileLink} style="width: ${width}"]]`,
+    ];
+    if (caption) {
+      lines.push(`[[span]]${caption.replaceAll("\n", " _\n")}[[/span]]`);
+    }
+    lines.push("[[/div]]");
+    return lines.join("\n");
+  }, [getProcessedInputs]);
   
   const createIncludeImage = useCallback((): string => {
-    const content = [
-      `  | name=${encodeURI(selectedFile.trim())}`,
-      `  | align=${align}`,
-      `  | caption=${caption.trim()}`,
-      `  | width=${width.trim() || "300px"}`,
-    ].join("\n");
+    const { fileLink, align, caption, width } = getProcessedInputs();
     
-    return "[[include component:image-block\n" + content + "\n]]";
-  }, [caption, width, selectedFile, align]);
+    return [
+      "[[include component:image-block",
+      `  | name=${fileLink}`,
+      `  | align=${align}`,
+      `  | caption=${caption}`,
+      `  | width=${width}`,
+      "]]"
+    ].join("\n");
+    }, [getProcessedInputs]);
   
   const createImage = useCallback((): string => {
     const imageFn: Record<ImageMarkupType, () => string> = {
@@ -164,9 +184,9 @@ const ImageModal: EditorModalComponent = ({
   
   const onRefreshClick = useCallback(() => {
     if (!pageId) return;
-    setSelectedFile("");
+    setSelectedFileLink("");
     fileStore.load(pageId, true);
-  }, [pageId, setSelectedFile]);
+  }, [pageId, setSelectedFileLink]);
   
   useEffect(() => {
     if (!pageId) return;
@@ -175,7 +195,7 @@ const ImageModal: EditorModalComponent = ({
   
   useEffect(() => {
     if (fileStoreState.status === "success" && fileStoreState.files.length) {
-      setSelectedFile(fileStoreState.files[0].name);
+      setSelectedFileLink(fileStoreState.files[0].name);
     }
   }, [fileStoreState.files]);
   
@@ -212,20 +232,31 @@ const ImageModal: EditorModalComponent = ({
         </fieldset>
         
         {imageLinkType === "freeLink" && (
-          <div className="editor-modal-form-grid">
-            <label className="editor-modal-subgrid-row">
-              Ссылка:
-              <input
-                type="text"
-                name="wd-ed-imagewizard-link"
-                value={selectedFile}
-                onChange={ev => setSelectedFile(ev.target.value)}
-                placeholder="Ссылка на файл"
-                size={28}
-              />
-            </label>
-            {/* todo add domain check */}
-          </div>
+          <>
+            <div className="editor-modal-form-grid">
+              <label className="editor-modal-subgrid-row">
+                Ссылка:
+                <input
+                  type="text"
+                  name="wd-ed-imagewizard-link"
+                  value={selectedFileLink}
+                  onChange={ev => setSelectedFileLink(ev.target.value)}
+                  placeholder={DEFAULT_FILE_LINK}
+                  size={28}
+                />
+              </label>
+            </div>
+            <div>
+              {!isInternalLink(URL.parse(selectedFileLink, window.location.origin)) && (
+                <p>
+                  Введённая ссылка ведёт на внешний сайт. Это может привести к <a
+                    href="https://ru.wikipedia.org/wiki/%D0%92%D1%8B%D0%BC%D0%B8%D1%80%D0%B0%D0%BD%D0%B8%D0%B5_%D1%81%D1%81%D1%8B%D0%BB%D0%BE%D0%BA"
+                    target="_blank"
+                  > вымиранию ссылки</a> и утрате доступа к изображению.
+                </p>
+              )}
+            </div>
+          </>
         )}
         
         {imageLinkType === "file" && (
@@ -261,8 +292,8 @@ const ImageModal: EditorModalComponent = ({
                           type="radio"
                           name="image-modal-file-select"
                           value={image.name}
-                          checked={image.name === selectedFile}
-                          onChange={ev => setSelectedFile(ev.target.value)}
+                          checked={image.name === selectedFileLink}
+                          onChange={ev => setSelectedFileLink(ev.target.value)}
                         />
                         {image.name}
                       </label>
@@ -274,6 +305,7 @@ const ImageModal: EditorModalComponent = ({
           </div>
         )}
         
+        <h4>Дополнительные опции</h4>
         <div className="editor-modal-margin">
           <label>
             Подпись:
@@ -321,7 +353,7 @@ const ImageModal: EditorModalComponent = ({
                 type="text"
                 value={width}
                 onChange={ev => setWidth(ev.target.value)}
-                placeholder="300px"
+                placeholder={DEFAULT_WIDTH}
               />
             </label>
           </div>
