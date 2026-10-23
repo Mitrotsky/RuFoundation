@@ -4,6 +4,25 @@ import styled from "styled-components";
 import EditorModal from "~components/editor-toolbar/modals/base-modal";
 import { EditorModalStyleBase } from "~components/editor-toolbar/modals/base-modal";
 import type { EditorModalComponent } from "~components/editor-toolbar/modals/base-modal";
+import { MOBILE_SIZE } from "~reactive/theme/Theme.consts";
+
+
+const TableModalStyle = styled(EditorModalStyleBase)`
+  .editor-modal-margin input {
+    max-width: 8ch;
+  }
+
+  .editor-modal-margin .editor-modal-subgrid-row {
+    justify-items: left;
+  }
+
+  @media (max-width: ${MOBILE_SIZE}px) {
+    .editor-modal-margin input {
+      max-width: revert;
+      width: 100%;
+    }
+  }
+`;
 
 
 const TableModal: EditorModalComponent = ({
@@ -35,55 +54,46 @@ const TableModal: EditorModalComponent = ({
   
   return (
     <EditorModal onSubmit={() => onSubmit(createTable())} onCancel={() => onCancel()}>
-      {/* TODO: update styles */}
-      <div style={{ textAlign: "center" }}>
-        <p><b>Мастер вставки таблиц</b></p>
+      <TableModalStyle>
+        <p className="editor-modal-header">Мастер вставки таблиц</p>
         
-        <table className="form">
-          <tbody>
-          <tr>
-            <td><label htmlFor="wd-ed-tablewizard-rows">Количество строк:</label></td>
-            <td><input
-              className="text"
-              id="wd-ed-tablewizard-rows"
+        <div className="editor-modal-form-grid editor-modal-margin">
+          <label className="editor-modal-subgrid-row">
+            Количество строк:
+            <input
               type="number"
+              name="wd-ed-tablewizard-rows"
               value={rows}
-              min={MIN_ROWS} max={99}
-              style={{ minWidth: "4ch" }}
-              onChange={e => setRows(e.target.valueAsNumber)}
-            /></td>
-          </tr>
-          <tr>
-            <td><label htmlFor="wd-ed-tablewizard-columns">Количество столбцов:</label></td>
-            <td><input
-              className="text"
-              id="wd-ed-tablewizard-columns"
+              onChange={ev => setRows(ev.target.valueAsNumber)}
+              placeholder={`${MIN_ROWS}`}
+            />
+          </label>
+          <label className="editor-modal-subgrid-row">
+            Количество столбцов:
+            <input
               type="number"
+              name="wd-ed-tablewizard-columns"
               value={columns}
-              min={MIN_COLUMNS} max={99}
-              style={{ minWidth: "4ch" }}
-              onChange={e => setColumns(e.target.valueAsNumber)}
-            /></td>
-          </tr>
-          <tr>
-            <td><label htmlFor="wd-ed-tablewizard-headers">Первая строка как заголовок:</label></td>
-            <td><input
-              className="checkbox"
-              id="wd-ed-tablewizard-headers"
+              onChange={ev => setColumns(ev.target.valueAsNumber)}
+              placeholder={`${MIN_COLUMNS}`}
+            />
+          </label>
+          <label className="editor-modal-subgrid-row">
+            Первая строка как заголовок:
+            <input
               type="checkbox"
               checked={useHeader}
               onChange={e => setUseHeader(e.target.checked)}
-            /></td>
-          </tr>
-          </tbody>
-        </table>
-        <br/>
-        <div style={{ textWrap: "balance" }}>
+            />
+          </label>
+        </div>
+        
+        <div className="editor-modal-hint">
           <b>Подсказка</b>: чтобы выровнять содержимое ячейки, добавьте сразу после
           маркера <code>||</code> символ <code>&lt;</code>, <code>=</code> или <code>&gt;</code> (для выравнивания по
           левому краю, центру и правому краю соответственно).
         </div>
-      </div>
+      </TableModalStyle>
     </EditorModal>
   );
 };

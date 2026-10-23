@@ -8,7 +8,6 @@ import { APIError } from "~util/fetch-util";
 import type { EditorModalComponent } from "~components/editor-toolbar/modals/base-modal";
 import type { ArticleFile } from "~api/files";
 import Loader from "~util/loader";
-import { MOBILE_SIZE } from "~reactive/theme/Theme.consts";
 
 
 type FileLoadingStaus = "pending" | "success" | "error";
@@ -103,49 +102,15 @@ const fileStore = new FileStore();
 
 const ImageModalStyle = styled(EditorModalStyleBase)`
   .image-modal-files-container {
-    max-height: 128px;
     width: fit-content;
     margin-inline: auto;
-    overflow-y: auto;
-    scrollbar-gutter: stable;
     padding-inline: 1em;
-  }
-
-  .image-modal-files-container-list {
-    width: fit-content;
-  }
-
-  .image-modal-files-container-list label {
-    display: flex;
-    align-items: center;
-    column-gap: 0.4em;
   }
 
   .image-modal-buttons {
     display: flex;
     justify-content: flex-end;
-    margin-bottom: 0.4em;
-  }
-
-  .image-modal-additional-options-selects {
-    display: grid;
-    grid-template-columns: max-content auto;
-    gap: 0.1em 0.4em;
-    width: fit-content;
-    margin-inline: auto;
-  }
-
-  @media (max-width: ${MOBILE_SIZE}px) {
-    .image-modal-additional-options-selects {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .image-modal-additional-options-selects label {
-    display: grid;
-    grid-column: -1 / 1;
-    grid-template-columns: subgrid;
-    align-items: center;
+    margin-bottom: var(--editor-modal-gap);
   }
 `;
 
@@ -170,9 +135,9 @@ const ImageModal: EditorModalComponent = ({
       center: "cimg",
       right: "rimg",
     };
-    
+    const captionTrimmed = caption.trim();
     const top = `[[div_ class="${alignMap[align]}"]]\n[[image ${encodeURI(selectedFile.trim())} style="width: ${width.trim() || "300px"}"]]\n`;
-    const content = `[[span]]${caption.replaceAll("\n", " _\n")}[[/span]]\n`;
+    const content = captionTrimmed ? `[[span]]${captionTrimmed.replaceAll("\n", " _\n")}[[/span]]\n` : "";
     const bottom = "[[/div]]";
     
     return top + content + bottom;
@@ -247,8 +212,8 @@ const ImageModal: EditorModalComponent = ({
         </fieldset>
         
         {imageLinkType === "freeLink" && (
-          <div className="image-modal-additional-options-selects">
-            <label>
+          <div className="editor-modal-form-grid">
+            <label className="editor-modal-subgrid-row">
               Ссылка:
               <input
                 type="text"
@@ -256,6 +221,7 @@ const ImageModal: EditorModalComponent = ({
                 value={selectedFile}
                 onChange={ev => setSelectedFile(ev.target.value)}
                 placeholder="Ссылка на файл"
+                size={28}
               />
             </label>
             {/* todo add domain check */}
@@ -286,8 +252,8 @@ const ImageModal: EditorModalComponent = ({
             )}
             
             {fileStoreState.status === "success" && (
-              <div className="image-modal-files-container">
-                <div className="image-modal-files-container-list">
+              <div className="image-modal-files-container editor-modal-scroll-area">
+                <div className="editor-modal-choice-list">
                   {fileStoreState.files.length ? (
                     fileStoreState.files.map(image => (
                       <label key={image.name}>
@@ -301,18 +267,17 @@ const ImageModal: EditorModalComponent = ({
                         {image.name}
                       </label>
                     ))
-                  ) : <p className="editor-modal-grid-spanner">На данной странице нет ни одного файла изображений.</p>}
+                  ) : <p>На данной странице нет ни одного файла изображений.</p>}
                 </div>
               </div>
             )}
           </div>
         )}
         
-        <div>
+        <div className="editor-modal-margin">
           <label>
             Подпись:
             <textarea
-              className="text"
               name="wd-ed-imagewizard-caption"
               value={caption}
               onChange={ev => setCaption(ev.target.value)}
@@ -326,8 +291,8 @@ const ImageModal: EditorModalComponent = ({
               placeholder="Описание изображения"
             />
           </label>
-          <div className="image-modal-additional-options-selects">
-            <label>
+          <div className="editor-modal-form-grid">
+            <label className="editor-modal-subgrid-row">
               Тип синтаксиса:
               <select
                 id="wd-ed-imagewizard-markup-select"
@@ -338,7 +303,7 @@ const ImageModal: EditorModalComponent = ({
                 <option value="include">Стандартный блок с изображением</option>
               </select>
             </label>
-            <label>
+            <label className="editor-modal-subgrid-row">
               Выравнивание:
               <select
                 id="wd-ed-imagewizard-align-select"
@@ -350,7 +315,7 @@ const ImageModal: EditorModalComponent = ({
                 <option value="right">Справа</option>
               </select>
             </label>
-            <label>
+            <label className="editor-modal-subgrid-row">
               Ширина:
               <input
                 type="text"

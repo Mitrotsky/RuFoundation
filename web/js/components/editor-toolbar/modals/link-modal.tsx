@@ -1,23 +1,11 @@
 import React from "react";
 import { useCallback, useMemo, useState } from "react";
-import styled from "styled-components";
 import EditorModal from "~components/editor-toolbar/modals/base-modal";
 import { EditorModalStyleBase } from "~components/editor-toolbar/modals/base-modal";
 import type { EditorModalComponent } from "~components/editor-toolbar/modals/base-modal";
 
 
 type LinkType = "external" | "internal";
-
-
-const LinkModalStyle = styled(EditorModalStyleBase)`
-  .link-modal-main-content {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 0.1em 0.4em;
-    width: fit-content;
-    margin-inline: auto;
-  }
-`;
 
 
 const LinkModal: EditorModalComponent = ({
@@ -57,7 +45,7 @@ const LinkModal: EditorModalComponent = ({
   
   return (
     <EditorModal onSubmit={() => onSubmit(createLink())} onCancel={() => onCancel()}>
-      <LinkModalStyle>
+      <EditorModalStyleBase>
         <p className="editor-modal-header">Мастер вставки ссылок</p>
         <fieldset>
           <legend>Тип вставляемой ссылки</legend>
@@ -92,26 +80,32 @@ const LinkModal: EditorModalComponent = ({
             />
           </label>
         </fieldset>
-        <div className="link-modal-main-content">
-          <label htmlFor="wd-ed-linkwizard-link">Ссылка на страницу: </label>
-          <input
-            className="text"
-            type="text"
-            id="wd-ed-linkwizard-link"
-            placeholder="https://example.com/"
-            size={28}
-            onChange={(ev) => setLink(ev.target.value)}
-          />
-          <label htmlFor="wd-ed-linkwizard-text">Текст ссылки: </label>
-          <input
-            className="text"
-            type="text"
-            id="wd-ed-linkwizard-text"
-            placeholder="Ссылка"
-            size={28}
-            value={title}
-            onChange={(ev) => setTitle(ev.target.value)}
-          />
+        <div className="editor-modal-form-grid">
+          <label className="editor-modal-subgrid-row">
+            Ссылка на страницу:
+            <input
+              type="text"
+              placeholder={(() => {
+                const placeholders: Record<LinkType, string> = {
+                  external: "https://example.com/",
+                  internal: "SCP-173",
+                }
+                return placeholders[linkType];
+              })()}
+              size={28}
+              onChange={(ev) => setLink(ev.target.value)}
+            />
+          </label>
+          <label className="editor-modal-subgrid-row">
+            Текст ссылки:
+            <input
+              type="text"
+              placeholder="Ссылка"
+              size={28}
+              value={title}
+              onChange={(ev) => setTitle(ev.target.value)}
+            />
+          </label>
         </div>
         <div>
           {(linkType === "internal" && !isSameDomain) && (<p>
@@ -121,7 +115,7 @@ const LinkModal: EditorModalComponent = ({
             Введённая ссылка ведёт на этот сайт. Используйте опцию «Внутренняя ссылка».
           </p>)}
         </div>
-      </LinkModalStyle>
+      </EditorModalStyleBase>
     </EditorModal>
   );
 };

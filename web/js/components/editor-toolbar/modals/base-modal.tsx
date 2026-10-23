@@ -2,6 +2,7 @@ import React from "react";
 import { useEffect } from "react";
 import styled from "styled-components";
 import WikidotModal from "~util/wikidot-modal";
+import { MOBILE_SIZE } from "~reactive/theme/Theme.consts";
 
 
 interface EditorModalProps {
@@ -22,6 +23,8 @@ type EditorModalComponent = React.FC<EditorModalComponentProps>;
 
 
 const EditorModalStyleBase = styled.div`
+  --editor-modal-gap: 0.4em;
+
   * {
     box-sizing: border-box;
   }
@@ -36,6 +39,7 @@ const EditorModalStyleBase = styled.div`
     padding: 1px 2px;
     background-color: #FFF;
     color: #333;
+    height: 1.4lh;
   }
 
   button {
@@ -49,16 +53,16 @@ const EditorModalStyleBase = styled.div`
 
   fieldset {
     display: grid;
-    gap: 0.4em;
+    gap: var(--editor-modal-gap);
     border: 1px solid #aaa;
     margin: 1em auto;
     width: fit-content;
   }
   
-  fieldset label {
+  :is(fieldset, .editor-modal-choice-list) label {
     display: flex;
     align-items: center;
-    column-gap: 0.4em;
+    column-gap: var(--editor-modal-gap);
   }
 
   textarea {
@@ -76,6 +80,7 @@ const EditorModalStyleBase = styled.div`
   .editor-modal-header {
     text-align: center;
     font-weight: bold;
+    font-size: large;
   }
   
   .editor-modal-loader-container {
@@ -86,8 +91,36 @@ const EditorModalStyleBase = styled.div`
     background-color: rgba(119 119 119 / 0.5);
   }
   
-  .editor-modal-grid-spanner {
+  .editor-modal-form-grid {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.1em var(--editor-modal-gap);
+    width: fit-content;
+    margin-inline: auto;
+  }
+
+  @media (max-width: ${MOBILE_SIZE}px) {
+    .editor-modal-form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .editor-modal-subgrid-row {
+    display: grid;
     grid-column: -1 / 1;
+    grid-template-columns: subgrid;
+    row-gap: 0.1em;
+    align-items: center;
+  }
+
+  .editor-modal-scroll-area {
+    max-height: 128px;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+  
+  .editor-modal-margin {
+    margin-block: 1em;
   }
   
   .editor-modal-hint {

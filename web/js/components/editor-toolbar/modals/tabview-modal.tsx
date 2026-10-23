@@ -14,19 +14,14 @@ interface TabviewEntry {
 
 
 const TabviewModalStyle = styled(EditorModalStyleBase)`
-  text-align: center;
-
   .tabview-modal-add-new-entry {
     display: flex;
     align-items: baseline;
-    column-gap: 0.4em;
+    column-gap: var(--editor-modal-gap);
   }
 
   .tabview-modal-entry-container {
     height: 128px;
-    max-height: 128px;
-    overflow-y: auto;
-    scrollbar-gutter: stable;
   }
 
   .tabview-modal-entry-container-grid {
@@ -36,12 +31,14 @@ const TabviewModalStyle = styled(EditorModalStyleBase)`
   }
 
   .tabview-modal-entry-container-grid-row {
-    display: grid;
-    grid-column: -1 / 1;
-    grid-template-columns: subgrid;
     align-items: baseline;
     justify-items: end;
     column-gap: 1em;
+    text-align: center;
+  }
+  
+  #wd-ed-tabviewwizard-input {
+    flex-grow: 1;
   }
 `;
 
@@ -76,11 +73,10 @@ const TabviewModal: EditorModalComponent = ({
   return (
     <EditorModal onSubmit={() => onSubmit(createTabview())} onCancel={() => onCancel()}>
       <TabviewModalStyle>
-        <p><b>Мастер вставки вкладок</b></p>
+        <p className="editor-modal-header">Мастер вставки вкладок</p>
         <div className="tabview-modal-add-new-entry">
           <label htmlFor="wd-ed-tabviewwizard-input">Заголовок:</label>
           <input
-            className="text"
             id="wd-ed-tabviewwizard-input"
             type="text"
             value={titleInput}
@@ -93,10 +89,10 @@ const TabviewModal: EditorModalComponent = ({
           </button>
         </div>
         <hr className="buttons-hr"/>
-        <div className="tabview-modal-entry-container">
+        <div className="tabview-modal-entry-container editor-modal-scroll-area">
           <div className="tabview-modal-entry-container-grid">
             {entryArray.map((item, idx) => (
-              <div className="tabview-modal-entry-container-grid-row" key={item.id}>
+              <div className="tabview-modal-entry-container-grid-row editor-modal-subgrid-row" key={item.id}>
                 <span>{`${idx + 1}.`}</span>
                 <span>{item.title}</span>
                 <button
