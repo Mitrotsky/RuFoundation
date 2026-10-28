@@ -80,7 +80,10 @@ const TabviewModal: EditorModalComponent = ({
             id="wd-ed-tabviewwizard-input"
             type="text"
             value={titleInput}
-            onChange={e => setTitleInput(e.target.value)}
+            onChange={ev => setTitleInput(ev.target.value)}
+            onKeyDown={ev => {
+              if (ev.code === "Enter") addTitleEntry();
+            }}
           />
           <button
             type="button"
@@ -90,14 +93,18 @@ const TabviewModal: EditorModalComponent = ({
         </div>
         <hr className="buttons-hr"/>
         <div className="tabview-modal-entry-container editor-modal-scroll-area">
-          <div className="tabview-modal-entry-container-grid">
+          <div className="tabview-modal-entry-container-grid" role="list">
             {entryArray.map((item, idx) => (
-              <div className="tabview-modal-entry-container-grid-row editor-modal-subgrid-row" key={item.id}>
+              <div
+                className="tabview-modal-entry-container-grid-row editor-modal-subgrid-row"
+                role="listitem"
+                key={item.id}>
                 <span>{`${idx + 1}.`}</span>
                 <span>{item.title}</span>
                 <button
                   type="button"
                   onClick={() => removeTitleEntry(item.id)}
+                  aria-label={`Удалить вкладку «${item.title}»`}
                 >×
                 </button>
               </div>

@@ -100,10 +100,11 @@ const LinkModal: EditorModalComponent = ({
               size={28}
               value={title}
               onChange={(ev) => setTitle(ev.target.value)}
+              aria-describedby="wd-ed-linkwizard-link-warning"
             />
           </label>
         </div>
-        <div>
+        <div id="wd-ed-linkwizard-link-warning" role="status">
           {(linkType === "internal" && link.trim() && !isSameDomain) && (
             <p>
               Введённая ссылка ведёт на внешний сайт. Будет вставлена полная ссылка.

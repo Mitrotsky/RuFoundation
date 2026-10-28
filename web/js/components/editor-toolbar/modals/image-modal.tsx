@@ -243,10 +243,11 @@ const ImageModal: EditorModalComponent = ({
                   onChange={ev => setSelectedFileLink(ev.target.value)}
                   placeholder={DEFAULT_FILE_LINK}
                   size={28}
+                  aria-describedby="wd-ed-imagewizard-link-warning"
                 />
               </label>
             </div>
-            <div>
+            <div id="wd-ed-imagewizard-link-warning" role="status">
               {!isInternalLink(URL.parse(selectedFileLink, window.location.origin)) && (
                 <p>
                   Введённая ссылка ведёт на внешний сайт. Это может привести к <a
@@ -277,14 +278,14 @@ const ImageModal: EditorModalComponent = ({
             )}
             
             {fileStoreState.status === "error" && (
-              <div className="image-modal-error-container">
+              <div className="image-modal-error-container" role="alert">
                 <p>{`К сожалению, что-то пошло не так: ${fileStoreState.errorMessage}`}</p>
               </div>
             )}
             
             {fileStoreState.status === "success" && (
               <div className="image-modal-files-container editor-modal-scroll-area">
-                <div className="editor-modal-choice-list">
+                <div className="editor-modal-choice-list" role="radiogroup">
                   {fileStoreState.files.length ? (
                     fileStoreState.files.map(image => (
                       <label key={image.name}>

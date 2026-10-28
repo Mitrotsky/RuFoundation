@@ -8,7 +8,7 @@ import { fetchAllUsers } from '../api/user'
 import useConstCallback from '../util/const-callback'
 import Loader from '../util/loader'
 import WikidotModal from '../util/wikidot-modal'
-import EditorToolbarPanel from "~components/editor-toolbar/editor-toolbar-panel";
+import MittenEditorToolbarPanel from "~components/editor-toolbar/mitten-editor-toolbar-panel";
 
 export interface ForumPostPreviewData {
   name: string
@@ -345,11 +345,15 @@ const ForumPostEditor: React.FC<Props> = ({
           </tbody>
         </table>
         {/* This is supported now but in a bit janky way */}
-        <EditorToolbarPanel
-          textareaRef={textareaRef}
-          onSourceChange={onSourceChange}
-          disabled={loading || saving}
-        />
+        {!useAdvancedEditor ? (
+          <MittenEditorToolbarPanel
+            textareaRef={textareaRef}
+            onSourceChange={onSourceChange}
+            disabled={loading || saving}
+          />
+        ) : (
+          <div className="wd-editor-toolbar-panel" id="wd-editor-toolbar-panel" />
+        )}
         <div className={`w-editor-area ${loading ? 'loading' : ''}`}>
           {!useAdvancedEditor && (
             <textarea

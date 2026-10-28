@@ -128,6 +128,7 @@ const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = ({
       className={className}
       onClick={onClick}
       title={keybind ? `${title} (${keybind.replace("Ctrl", ctrlRepr)})` : title}
+      aria-keyshortcuts={keybind ? `${keybind.replace("Ctrl", isAppleDevice ? "Meta" : "Control")}` : undefined}
       disabled={disabled}
     />
   );
@@ -717,9 +718,17 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
   
   return (
     <div className={`wd-editor-toolbar-panel ${className}`} id="wd-editor-toolbar-panel">
-      <div className="editor-toolbar-wrapper">
+      <div
+        className="editor-toolbar-wrapper"
+        role="toolbar"
+        aria-label="Панель инструментов редактора"
+      >
         {toolbarButtonGroups.map(buttonGroup => (
-          <div className={`editor-toolbar-options ${buttonGroup.className}`} key={buttonGroup.className}>
+          <div
+            className={`editor-toolbar-options ${buttonGroup.className}`}
+            key={buttonGroup.className}
+            role="group"
+          >
             {buttonGroup.entry.map(button => (
               <EditorToolbarButton
                 className={button.className}
@@ -733,24 +742,21 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
           </div>
         ))}
       </div>
-      {(matchMedia("(hover: hover)").matches) && (
-        <div>
-          <p className="editor-toolbar-trap-hint">
-            {keyboardTrapped
-              ? "Используйте Escape чтобы вернуться к навигации по странице"
-              : "Выделите редактор чтобы использовать панель инструментов"}
-          </p>
-        </div>
-      )}
+      <div>
+        <p className="editor-toolbar-trap-hint" role="status">
+          {keyboardTrapped
+            ? "Используйте Escape чтобы вернуться к навигации по странице"
+            : "Выделите редактор чтобы использовать панель инструментов"
+          }
+        </p>
+      </div>
       {modalRender()}
     </div>
   );
 };
 
 
-const EditorToolbarPanel = styled(EditorToolbarPanel__Bare)`
-  /* temp styles todo: redo after the button refactor */
-
+const MittenEditorToolbarPanel = styled(EditorToolbarPanel__Bare)`
   * {
     box-sizing: border-box;
   }
@@ -766,9 +772,6 @@ const EditorToolbarPanel = styled(EditorToolbarPanel__Bare)`
     padding-inline: 6px;
     left: -1px;
     border-left: 1px solid #ccc;
-    /* TODO: remove after testing */
-    background-color: hsl(calc(sibling-index() * 40) 60% 58% / 0.2);
-    background-image: linear-gradient(to left, #0004, transparent);
   }
 
   :where(.editor-toolbar-wrapper) {
@@ -781,6 +784,12 @@ const EditorToolbarPanel = styled(EditorToolbarPanel__Bare)`
     margin-block: 4px;
     font-style: italic;
     font-size: smaller;
+  }
+
+  @media (hover: none) {
+    .editor-toolbar-trap-hint {
+      display: none;
+    }
   }
 
   button {
@@ -952,4 +961,4 @@ const EditorToolbarPanel = styled(EditorToolbarPanel__Bare)`
 `;
 
 
-export default EditorToolbarPanel;
+export default MittenEditorToolbarPanel;

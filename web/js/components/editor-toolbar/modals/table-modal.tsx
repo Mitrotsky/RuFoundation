@@ -77,6 +77,8 @@ const TableModal: EditorModalComponent = ({
               type="number"
               name="wd-ed-tablewizard-rows"
               value={rows}
+              min={MIN_ROWS}
+              max={MAX_ROWS}
               onChange={ev => setRows(ev.target.valueAsNumber)}
               onBlur={() => {
                 setRows(Number.isNaN(rows) ? MIN_ROWS : clamp(rows, MIN_ROWS, MAX_ROWS));
@@ -90,6 +92,8 @@ const TableModal: EditorModalComponent = ({
               type="number"
               name="wd-ed-tablewizard-columns"
               value={columns}
+              min={MIN_COLUMNS}
+              max={MAX_COLUMNS}
               onChange={ev => setColumns(ev.target.valueAsNumber)}
               onBlur={() => {
                 setColumns(Number.isNaN(columns) ? MIN_COLUMNS : clamp(columns, MIN_COLUMNS, MAX_COLUMNS));

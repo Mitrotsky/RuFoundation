@@ -9,7 +9,7 @@ import useConstCallback from '../util/const-callback'
 import Loader from '../util/loader'
 import { removeMessage, showPreviewMessage } from '../util/wikidot-message'
 import WikidotModal from '../util/wikidot-modal'
-import EditorToolbarPanel from '~components/editor-toolbar/editor-toolbar-panel'
+import MittenEditorToolbarPanel from '~components/editor-toolbar/mitten-editor-toolbar-panel'
 
 interface Props {
   pageId: string
@@ -362,7 +362,7 @@ const ArticleEditor: React.FC<Props> = ({
         </table>
         {/* This is supported now but in a bit janky way */}
         {!useAdvancedEditor ? (
-          <EditorToolbarPanel
+          <MittenEditorToolbarPanel
             textareaRef={textareaRef}
             onSourceChange={onSourceChange}
             pageId={pageId}
