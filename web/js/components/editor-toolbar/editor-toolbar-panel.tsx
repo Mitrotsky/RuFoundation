@@ -98,11 +98,6 @@ function eventToLiteral(ev: KeyboardEvent): KeybindLiteral | null {
 }
 
 
-// TODO: add image modal
-
-// TODO: add ... modal
-
-
 type ModalName = "table" | "tabview" | "link" | "image";
 
 
@@ -486,6 +481,11 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
   
   const listFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
     {
+      className: "weditor-deflist",
+      title: "Список определений",
+      onClick: () => insertList(": Термин : ", "Определение"),
+    },
+    {
       className: "weditor-bullist",
       title: "Маркированный список",
       onClick: () => insertList("*"),
@@ -506,11 +506,6 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
       title: "Уменьшить отступ",
       onClick: () => indent(false),
       keybind: "Shift+Tab",
-    },
-    {
-      className: "weditor-deflist",
-      title: "Список определений",
-      onClick: () => insertList(": Термин : ", "Определение"),
     },
   ], [insertList, indent]);
   
@@ -553,6 +548,11 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
       title: "Внутренняя ссылка",
       onClick: () => insertInline("[[[*статья|", "]]]", false),
     },
+    {
+      className: "weditor-image",
+      title: "Изображение",
+      onClick: () => insertInline("[[image ", "]]", false),
+    },
   ], [insertInline]);
   
   const miscFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
@@ -575,12 +575,12 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
   
   const wizardButtonData: EditorToolbarButtonProps[] = useMemo(() => [
     {
-      className: "weditor-table",
+      className: "weditor-tablewiz",
       title: "Мастер вставки таблиц",
       onClick: () => modalOpen("table"),
     },
     {
-      className: "weditor-tabview",
+      className: "weditor-tabviewwiz",
       title: "Мастер вставки вкладок",
       onClick: () => modalOpen("tabview"),
     },
@@ -726,16 +726,22 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
                 onClick={button.onClick}
                 title={button.title}
                 keybind={button.keybind}
-                key={`${buttonGroup.className}`}
+                key={`${buttonGroup.className}-${button.className}`}
                 disabled={disabled}
               />
             ))}
           </div>
         ))}
       </div>
-      <div>
-        <p>{keyboardTrapped ? "Используйте Escape чтобы вернуться к навигации по странице" : "Выделите редактор чтобы использовать панель инструментов"}</p>
-      </div>
+      {(matchMedia("(hover: hover)").matches) && (
+        <div>
+          <p className="editor-toolbar-trap-hint">
+            {keyboardTrapped
+              ? "Используйте Escape чтобы вернуться к навигации по странице"
+              : "Выделите редактор чтобы использовать панель инструментов"}
+          </p>
+        </div>
+      )}
       {modalRender()}
     </div>
   );
@@ -757,23 +763,191 @@ const EditorToolbarPanel = styled(EditorToolbarPanel__Bare)`
     display: inline-flex;
     position: relative;
     gap: 2px;
-    vertical-align: text-bottom;
+    padding-inline: 6px;
+    left: -1px;
+    border-left: 1px solid #ccc;
+    /* TODO: remove after testing */
+    background-color: hsl(calc(sibling-index() * 40) 60% 58% / 0.2);
+    background-image: linear-gradient(to left, #0004, transparent);
   }
 
   :where(.editor-toolbar-wrapper) {
     display: flex;
     flex-wrap: wrap;
+    overflow-x: clip;
+  }
+  
+  :where(.editor-toolbar-trap-hint) {
+    margin-block: 4px;
+    font-style: italic;
+    font-size: smaller;
   }
 
   button {
-    height: 22px;
-    width: 22px;
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/missing.svg");
+
+    height: 32px;
+    width: 32px;
     padding: 0;
     margin: 0;
-    display: inline-block;
-    border: 1px solid #AAA;
-    background-color: #F4F4F4;
-    background-origin: border-box;
+    background: #333;
+    position: relative;
+    mask-image: var(--editor-icon-image);
+    mask-size: 20px;
+    mask-repeat: no-repeat;
+    mask-position: 6px 6px;
+    border: none;
+    transition: background-color 0.15s ease-out;
+  }
+
+  button:hover {
+    background: var(--new-side-bar-color, #901);
+  }
+
+  /*  */
+
+  button.weditor-bold {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/bold.svg");
+  }
+
+  button.weditor-italic {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/italic.svg");
+  }
+
+  button.weditor-underline {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/underline.svg");
+  }
+
+  button.weditor-strikethrough {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/strikethrough.svg");
+  }
+
+  button.weditor-teletype {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/monospace.svg");
+  }
+
+  button.weditor-superscript {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/upper.svg");
+  }
+
+  button.weditor-subscript {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/lower.svg");
+  }
+
+  button.weditor-raw {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/raw.svg");
+  }
+
+  button.weditor-textcolor {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/text-color.svg");
+  }
+
+  /*  */
+
+  button.weditor-alignleft {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/align-left.svg");
+  }
+
+  button.weditor-alignmiddle {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/align-center.svg");
+  }
+
+  button.weditor-alignright {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/align-right.svg");
+  }
+
+  button.weditor-alignjustify {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/align-justify.svg");
+  }
+
+  /*  */
+
+  button.weditor-bullist {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/bullet-list.svg");
+  }
+
+  button.weditor-numlist {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/numberic-list.svg");
+  }
+
+  button.weditor-incindent {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/inc-indent.svg");
+  }
+
+  button.weditor-decindent {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/dec-indent.svg");
+  }
+
+  button.weditor-deflist {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/definition-list.svg");
+  }
+  
+  /*  */
+  
+  button.weditor-collapsible {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/collapsible.svg");
+  }
+  
+  button.weditor-quote {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/quoteblock.svg");
+  }
+  
+  button.weditor-div {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/div.svg");
+  }
+  
+  /*  */
+  
+  button.weditor-footnote {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/footnote.svg");
+  }
+  
+  button.weditor-span {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/span.svg");
+  }
+  
+  button.weditor-extlink {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/external-link.svg");
+  }
+  
+  button.weditor-link {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/internal-link.svg");
+  }
+  
+  button.weditor-image {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/image.svg");
+  }
+  
+  /*  */
+  
+  button.weditor-hr {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/hr.svg");
+  }
+  
+  button.weditor-clearfloat {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/float-clear.svg");
+  }
+  
+  button.weditor-lines {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/lines.svg");
+  }
+  
+  /*  */
+  
+  button.weditor-tablewiz {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/table-wizard.svg");
+  }
+  
+  button.weditor-tabviewwiz {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/tabview-wizard.svg");
+  }
+  
+  button.weditor-pagelinkwiz {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/link-wizard.svg");
+  }
+  
+  button.weditor-imagewiz {
+    --editor-icon-image: url("/-/static/images/editor/mitten-icons/image-wizard.svg");
   }
 `;
 

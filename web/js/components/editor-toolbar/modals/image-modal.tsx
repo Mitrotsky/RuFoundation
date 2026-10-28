@@ -361,7 +361,7 @@ const ImageModal: EditorModalComponent = ({
         <div className="editor-modal-hint">
           <p>
             <b>Подсказка</b>: поле «Ширина» принимает в себя <a
-            href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/width"
+            href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/width#syntax"
             target="_blank"
           > любое валидное в CSS значение для ширины</a>.
           </p>
