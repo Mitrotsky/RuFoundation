@@ -1,6 +1,7 @@
 import React from "react";
 import { useEffect, useLayoutEffect, useRef, useCallback, useMemo, useState } from "react";
 import styled from "styled-components";
+import { css } from "styled-components";
 import type { EditorModalComponent } from "~components/editor-toolbar/modals/base-modal";
 import TableModal from "~components/editor-toolbar/modals/table-modal";
 import TabviewModal from "~components/editor-toolbar/modals/tabview-modal";
@@ -50,12 +51,6 @@ interface EditorToolbarButtonProps {
   className?: string,
   keybind?: KeybindLiteral,
   disabled?: boolean,
-}
-
-
-interface ToolbarGroup {
-  className: string,
-  entry: EditorToolbarButtonProps[],
 }
 
 
@@ -133,6 +128,294 @@ const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = ({
     />
   );
 };
+
+
+interface EditorButtonMethods {
+  insertInline: (before: string, after?: string, togglable?: boolean) => void,
+  insertBlock: (before: string, after: string, message?: string) => void,
+  insertList: (marker: string, message?: string) => void,
+  insertPlain: (before: string, after?: string, template?: string) => void,
+  indent: (isIncrement: boolean) => void,
+  modalOpen: (modalName: ModalName) => void,
+}
+
+
+type EditorCallback = (editor: EditorButtonMethods) => void;
+
+
+interface ButtonData {
+  className: string,
+  title: string,
+  onClick: EditorCallback,
+  keybind?: KeybindLiteral,
+  iconPath?: string,
+}
+
+
+interface ToolbarGroup {
+  className: string,
+  entry: ButtonData[],
+}
+
+
+const textFormatButtonData: ButtonData[] = [
+  {
+    className: "weditor-bold",
+    title: "Полужирный",
+    onClick: editor => editor.insertInline("**"),
+    keybind: "Ctrl+B",
+    iconPath: "/-/static/images/editor/mitten-icons/bold.svg",
+  },
+  {
+    className: "weditor-italic",
+    title: "Курсивный",
+    onClick: editor => editor.insertInline("//"),
+    keybind: "Ctrl+I",
+    iconPath: "/-/static/images/editor/mitten-icons/italic.svg",
+  },
+  {
+    className: "weditor-underline",
+    title: "Подчёркнутый",
+    onClick: editor => editor.insertInline("__"),
+    keybind: "Ctrl+U",
+    iconPath: "/-/static/images/editor/mitten-icons/underline.svg",
+  },
+  {
+    className: "weditor-strikethrough",
+    title: "Перечёркнутый",
+    onClick: editor => editor.insertInline("--"),
+    iconPath: "/-/static/images/editor/mitten-icons/strikethrough.svg",
+  },
+  {
+    className: "weditor-teletype",
+    title: "Моноширинный",
+    onClick: editor => editor.insertInline("{{", "}}"),
+    iconPath: "/-/static/images/editor/mitten-icons/monospace.svg",
+  },
+  {
+    className: "weditor-superscript",
+    title: "Верхний регистр",
+    onClick: editor => editor.insertInline("^^"),
+    iconPath: "/-/static/images/editor/mitten-icons/upper.svg",
+  },
+  {
+    className: "weditor-subscript",
+    title: "Нижний регистр",
+    onClick: editor => editor.insertInline(",,"),
+    iconPath: "/-/static/images/editor/mitten-icons/lower.svg",
+  },
+  {
+    className: "weditor-raw",
+    title: "Сырой текст",
+    onClick: editor => editor.insertInline("@@"),
+    iconPath: "/-/static/images/editor/mitten-icons/raw.svg",
+  },
+  {
+    className: "weditor-textcolor",
+    title: "Цветной текст",
+    onClick: editor => editor.insertInline("##цвет|", "##", false),
+    iconPath: "/-/static/images/editor/mitten-icons/text-color.svg",
+  },
+];
+
+const paragraphFormatButtonData: ButtonData[] = [
+  {
+    className: "weditor-alignleft",
+    title: "Выравнивание по левому краю",
+    onClick: editor => editor.insertBlock("[[<]]", "[[/<]]"),
+    keybind: "Ctrl+L",
+    iconPath: "/-/static/images/editor/mitten-icons/align-left.svg",
+  },
+  {
+    className: "weditor-alignmiddle",
+    title: "Выравнивание по центру",
+    onClick: editor => editor.insertBlock("[[=]]", "[[/=]]"),
+    keybind: "Ctrl+E",
+    iconPath: "/-/static/images/editor/mitten-icons/align-center.svg",
+  },
+  {
+    className: "weditor-alignright",
+    title: "Выравнивание по правому краю",
+    onClick: editor => editor.insertBlock("[[>]]", "[[/>]]"),
+    keybind: "Ctrl+R",
+    iconPath: "/-/static/images/editor/mitten-icons/align-right.svg",
+  },
+  {
+    className: "weditor-alignjustify",
+    title: "Выравнивание по ширине",
+    onClick: editor => editor.insertBlock("[[==]]", "[[/==]]"),
+    keybind: "Ctrl+J",
+    iconPath: "/-/static/images/editor/mitten-icons/align-justify.svg",
+  },
+];
+
+const listFormatButtonData: ButtonData[] = [
+  {
+    className: "weditor-deflist",
+    title: "Список определений",
+    onClick: editor => editor.insertList(": Термин : ", "Определение"),
+    iconPath: "/-/static/images/editor/mitten-icons/definition-list.svg",
+  },
+  {
+    className: "weditor-bullist",
+    title: "Маркированный список",
+    onClick: editor => editor.insertList("*"),
+    iconPath: "/-/static/images/editor/mitten-icons/bullet-list.svg",
+  },
+  {
+    className: "weditor-numlist",
+    title: "Нумерованный список",
+    onClick: editor => editor.insertList("#"),
+    iconPath: "/-/static/images/editor/mitten-icons/numberic-list.svg",
+  },
+  {
+    className: "weditor-incindent",
+    title: "Увеличить отступ",
+    onClick: editor => editor.indent(true),
+    keybind: "Tab",
+    iconPath: "/-/static/images/editor/mitten-icons/inc-indent.svg",
+  },
+  {
+    className: "weditor-decindent",
+    title: "Уменьшить отступ",
+    onClick: editor => editor.indent(false),
+    keybind: "Shift+Tab",
+    iconPath: "/-/static/images/editor/mitten-icons/dec-indent.svg",
+  },
+];
+
+const blockFormatButtonData: ButtonData[] = [
+  {
+    className: "weditor-collapsible",
+    title: "Раскрываемый блок",
+    onClick: editor => editor.insertBlock("[[collapsible show=\"+ Надпись при открытии спойлера\" hide=\"- Надпись при закрытии спойлера\"]]", "[[/collapsible]]", "Содержимое скрываемого блока"),
+    iconPath: "/-/static/images/editor/mitten-icons/collapsible.svg",
+  },
+  {
+    className: "weditor-quote",
+    title: "Блок цитирования",
+    onClick: editor => editor.insertBlock("[[blockquote]]", "[[/blockquote]]", "Содержимое блока цитирования"),
+    iconPath: "/-/static/images/editor/mitten-icons/quoteblock.svg",
+  },
+  {
+    className: "weditor-div",
+    title: "div-элемент",
+    onClick: editor => editor.insertBlock("[[div]]", "[[/div]]", "Содержимое блока"),
+    iconPath: "/-/static/images/editor/mitten-icons/div.svg",
+  },
+];
+
+const inlineFormatButtonData: ButtonData[] = [
+  {
+    className: "weditor-footnote",
+    title: "Сноска",
+    onClick: editor => editor.insertInline("[[footnote]]", "[[/footnote]]", false),
+    iconPath: "/-/static/images/editor/mitten-icons/footnote.svg",
+  },
+  {
+    className: "weditor-span",
+    title: "span-элемент",
+    onClick: editor => editor.insertInline("[[span]]", "[[/span]]", false),
+    iconPath: "/-/static/images/editor/mitten-icons/span.svg",
+  },
+  {
+    className: "weditor-extlink",
+    title: "Внешняя ссылка",
+    onClick: editor => editor.insertInline("[*ссылка ", "]", false),
+    iconPath: "/-/static/images/editor/mitten-icons/external-link.svg",
+  },
+  {
+    className: "weditor-link",
+    title: "Внутренняя ссылка",
+    onClick: editor => editor.insertInline("[[[*статья|", "]]]", false),
+    iconPath: "/-/static/images/editor/mitten-icons/internal-link.svg",
+  },
+  {
+    className: "weditor-image",
+    title: "Изображение",
+    onClick: editor => editor.insertInline("[[image ", "]]", false),
+    iconPath: "/-/static/images/editor/mitten-icons/image.svg",
+  },
+];
+
+const miscFormatButtonData: ButtonData[] = [
+  {
+    className: "weditor-hr",
+    title: "Горизонтальная линия",
+    onClick: editor => editor.insertPlain("----"),
+    iconPath: "/-/static/images/editor/mitten-icons/hr.svg",
+  },
+  {
+    className: "weditor-clearfloat",
+    title: "Сброс плавающих элементов",
+    onClick: editor => editor.insertPlain("~~~~"),
+    iconPath: "/-/static/images/editor/mitten-icons/float-clear.svg",
+  },
+  {
+    className: "weditor-lines",
+    title: "Вставка пустых строк",
+    onClick: editor => editor.insertPlain("[[lines ", "]]", "число"),
+    iconPath: "/-/static/images/editor/mitten-icons/lines.svg",
+  },
+];
+
+const wizardButtonData: ButtonData[] = [
+  {
+    className: "weditor-tablewiz",
+    title: "Мастер вставки таблиц",
+    onClick: editor => editor.modalOpen("table"),
+    iconPath: "/-/static/images/editor/mitten-icons/table-wizard.svg",
+  },
+  {
+    className: "weditor-tabviewwiz",
+    title: "Мастер вставки вкладок",
+    onClick: editor => editor.modalOpen("tabview"),
+    iconPath: "/-/static/images/editor/mitten-icons/tabview-wizard.svg",
+  },
+  {
+    className: "weditor-pagelinkwiz",
+    title: "Мастер вставки ссылок",
+    onClick: editor => editor.modalOpen("link"),
+    iconPath: "/-/static/images/editor/mitten-icons/link-wizard.svg",
+  },
+  {
+    className: "weditor-imagewiz",
+    title: "Мастер вставки изображений",
+    onClick: editor => editor.modalOpen("image"),
+    iconPath: "/-/static/images/editor/mitten-icons/image-wizard.svg",
+  },
+];
+
+const toolbarButtonGroups: ToolbarGroup[] = [
+  {
+    className: "text-format-options",
+    entry: textFormatButtonData,
+  },
+  {
+    className: "paragraph-format-options",
+    entry: paragraphFormatButtonData,
+  },
+  {
+    className: "list-format-options",
+    entry: listFormatButtonData,
+  },
+  {
+    className: "block-format-options",
+    entry: blockFormatButtonData,
+  },
+  {
+    className: "inline-format-options",
+    entry: inlineFormatButtonData,
+  },
+  {
+    className: "misc-format-options",
+    entry: miscFormatButtonData,
+  },
+  {
+    className: "wizard-format-options",
+    entry: wizardButtonData,
+  },
+];
 
 
 const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
@@ -402,234 +685,17 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
   
   // Data
   
-  const textFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
-    {
-      className: "weditor-bold",
-      title: "Полужирный",
-      onClick: () => insertInline("**"),
-      keybind: "Ctrl+B",
-    },
-    {
-      className: "weditor-italic",
-      title: "Курсивный",
-      onClick: () => insertInline("//"),
-      keybind: "Ctrl+I",
-    },
-    {
-      className: "weditor-underline",
-      title: "Подчёркнутый",
-      onClick: () => insertInline("__"),
-      keybind: "Ctrl+U",
-    },
-    {
-      className: "weditor-strikethrough",
-      title: "Перечёркнутый",
-      onClick: () => insertInline("--"),
-    },
-    {
-      className: "weditor-teletype",
-      title: "Моноширинный",
-      onClick: () => insertInline("{{", "}}"),
-    },
-    {
-      className: "weditor-superscript",
-      title: "Верхний регистр",
-      onClick: () => insertInline("^^"),
-    },
-    {
-      className: "weditor-subscript",
-      title: "Нижний регистр",
-      onClick: () => insertInline(",,"),
-    },
-    {
-      className: "weditor-raw",
-      title: "Сырой текст",
-      onClick: () => insertInline("@@"),
-    },
-    {
-      className: "weditor-textcolor",
-      title: "Цветной текст",
-      onClick: () => insertInline("##цвет|", "##", false),
-    },
-  ], [insertInline]);
+  const editorMethods: EditorButtonMethods = {
+    insertInline,
+    insertBlock,
+    insertList,
+    insertPlain,
+    indent,
+    modalOpen,
+  }
   
-  const paragraphFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
-    {
-      className: "weditor-alignleft",
-      title: "Выравнивание по левому краю",
-      onClick: () => insertBlock("[[<]]", "[[/<]]"),
-      keybind: "Ctrl+L",
-    },
-    {
-      className: "weditor-alignmiddle",
-      title: "Выравнивание по центру",
-      onClick: () => insertBlock("[[=]]", "[[/=]]"),
-      keybind: "Ctrl+E",
-    },
-    {
-      className: "weditor-alignright",
-      title: "Выравнивание по правому краю",
-      onClick: () => insertBlock("[[>]]", "[[/>]]"),
-      keybind: "Ctrl+R",
-    },
-    {
-      className: "weditor-alignjustify",
-      title: "Выравнивание по ширине",
-      onClick: () => insertBlock("[[==]]", "[[/==]]"),
-      keybind: "Ctrl+J",
-    },
-  ], [insertBlock]);
-  
-  const listFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
-    {
-      className: "weditor-deflist",
-      title: "Список определений",
-      onClick: () => insertList(": Термин : ", "Определение"),
-    },
-    {
-      className: "weditor-bullist",
-      title: "Маркированный список",
-      onClick: () => insertList("*"),
-    },
-    {
-      className: "weditor-numlist",
-      title: "Нумерованный список",
-      onClick: () => insertList("#"),
-    },
-    {
-      className: "weditor-incindent",
-      title: "Увеличить отступ",
-      onClick: () => indent(true),
-      keybind: "Tab",
-    },
-    {
-      className: "weditor-decindent",
-      title: "Уменьшить отступ",
-      onClick: () => indent(false),
-      keybind: "Shift+Tab",
-    },
-  ], [insertList, indent]);
-  
-  const blockFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
-    {
-      className: "weditor-collapsible",
-      title: "Раскрываемый блок",
-      onClick: () => insertBlock("[[collapsible show=\"+ Надпись при открытии спойлера\" hide=\"- Надпись при закрытии спойлера\"]]", "[[/collapsible]]", "Содержимое скрываемого блока"),
-    },
-    {
-      className: "weditor-quote",
-      title: "Блок цитирования",
-      onClick: () => insertBlock("[[blockquote]]", "[[/blockquote]]", "Содержимое блока цитирования"),
-    },
-    {
-      className: "weditor-div",
-      title: "div-элемент",
-      onClick: () => insertBlock("[[div]]", "[[/div]]", "Содержимое блока"),
-    },
-  ], [insertBlock]);
-  
-  const inlineFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
-    {
-      className: "weditor-footnote",
-      title: "Сноска",
-      onClick: () => insertInline("[[footnote]]", "[[/footnote]]", false),
-    },
-    {
-      className: "weditor-span",
-      title: "span-элемент",
-      onClick: () => insertInline("[[span]]", "[[/span]]", false),
-    },
-    {
-      className: "weditor-extlink",
-      title: "Внешняя ссылка",
-      onClick: () => insertInline("[*ссылка ", "]", false),
-    },
-    {
-      className: "weditor-link",
-      title: "Внутренняя ссылка",
-      onClick: () => insertInline("[[[*статья|", "]]]", false),
-    },
-    {
-      className: "weditor-image",
-      title: "Изображение",
-      onClick: () => insertInline("[[image ", "]]", false),
-    },
-  ], [insertInline]);
-  
-  const miscFormatButtonData: EditorToolbarButtonProps[] = useMemo(() => [
-    {
-      className: "weditor-hr",
-      title: "Горизонтальная линия",
-      onClick: () => insertPlain("----"),
-    },
-    {
-      className: "weditor-clearfloat",
-      title: "Сброс плавающих элементов",
-      onClick: () => insertPlain("~~~~"),
-    },
-    {
-      className: "weditor-lines",
-      title: "Вставка пустых строк",
-      onClick: () => insertPlain("[[lines ", "]]", "число"),
-    },
-  ], [insertPlain]);
-  
-  const wizardButtonData: EditorToolbarButtonProps[] = useMemo(() => [
-    {
-      className: "weditor-tablewiz",
-      title: "Мастер вставки таблиц",
-      onClick: () => modalOpen("table"),
-    },
-    {
-      className: "weditor-tabviewwiz",
-      title: "Мастер вставки вкладок",
-      onClick: () => modalOpen("tabview"),
-    },
-    {
-      className: "weditor-pagelinkwiz",
-      title: "Мастер вставки ссылок",
-      onClick: () => modalOpen("link"),
-    },
-    {
-      className: "weditor-imagewiz",
-      title: "Мастер вставки изображений",
-      onClick: () => modalOpen("image"),
-    },
-  ], [modalOpen]);
-  
-  const toolbarButtonGroups: ToolbarGroup[] = useMemo(() => [
-    {
-      className: "text-format-options",
-      entry: textFormatButtonData,
-    },
-    {
-      className: "paragraph-format-options",
-      entry: paragraphFormatButtonData,
-    },
-    {
-      className: "list-format-options",
-      entry: listFormatButtonData,
-    },
-    {
-      className: "block-format-options",
-      entry: blockFormatButtonData,
-    },
-    {
-      className: "inline-format-options",
-      entry: inlineFormatButtonData,
-    },
-    {
-      className: "misc-format-options",
-      entry: miscFormatButtonData,
-    },
-    {
-      className: "wizard-format-options",
-      entry: wizardButtonData,
-    },
-  ], [textFormatButtonData, paragraphFormatButtonData, listFormatButtonData, blockFormatButtonData, inlineFormatButtonData, miscFormatButtonData, wizardButtonData]);
-  
-  const actions: Map<KeybindLiteral, () => void> = useMemo(() => {
-    const keybindActionsMap: Map<KeybindLiteral, () => void> = new Map([
+  const actions = useMemo(() => {
+    const keybindActionsMap: Map<KeybindLiteral, EditorCallback> = new Map([
       ["Ctrl+Z", () => undo()],
       ["Ctrl+Shift+Z", () => redo()],
       ["Escape", () => {
@@ -645,7 +711,7 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
     }
     
     return keybindActionsMap;
-  }, [toolbarButtonGroups, setKeyboardTrapped, undo, redo /* Jung Kook - Please Don't Change */]);
+  }, [setKeyboardTrapped, undo, redo /* Jung Kook - Please Don't Change */]);
   
   // Hooks
   
@@ -678,7 +744,7 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
       ev.preventDefault();
       if (ev.repeat && !REPEATABLE_KEYBINDS.includes(kb)) return;
       
-      action();
+      action(editorMethods);
     };
     
     const focusHandler = () => {
@@ -732,7 +798,7 @@ const EditorToolbarPanel__Bare: React.FC<EditorToolbarPanelProps> = ({
             {buttonGroup.entry.map(button => (
               <EditorToolbarButton
                 className={button.className}
-                onClick={button.onClick}
+                onClick={() => button.onClick(editorMethods)}
                 title={button.title}
                 keybind={button.keybind}
                 key={`${buttonGroup.className}-${button.className}`}
@@ -809,154 +875,19 @@ const MittenEditorToolbarPanel = styled(EditorToolbarPanel__Bare)`
     transition: background-color 0.15s ease-out;
   }
 
-  button:hover {
+  button:is(:hover, :focus) {
     background: var(--new-side-bar-color, #901);
   }
 
-  /*  */
-
-  button.weditor-bold {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/bold.svg");
-  }
-
-  button.weditor-italic {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/italic.svg");
-  }
-
-  button.weditor-underline {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/underline.svg");
-  }
-
-  button.weditor-strikethrough {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/strikethrough.svg");
-  }
-
-  button.weditor-teletype {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/monospace.svg");
-  }
-
-  button.weditor-superscript {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/upper.svg");
-  }
-
-  button.weditor-subscript {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/lower.svg");
-  }
-
-  button.weditor-raw {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/raw.svg");
-  }
-
-  button.weditor-textcolor {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/text-color.svg");
-  }
-
-  /*  */
-
-  button.weditor-alignleft {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/align-left.svg");
-  }
-
-  button.weditor-alignmiddle {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/align-center.svg");
-  }
-
-  button.weditor-alignright {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/align-right.svg");
-  }
-
-  button.weditor-alignjustify {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/align-justify.svg");
-  }
-
-  /*  */
-
-  button.weditor-bullist {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/bullet-list.svg");
-  }
-
-  button.weditor-numlist {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/numberic-list.svg");
-  }
-
-  button.weditor-incindent {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/inc-indent.svg");
-  }
-
-  button.weditor-decindent {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/dec-indent.svg");
-  }
-
-  button.weditor-deflist {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/definition-list.svg");
-  }
-  
-  /*  */
-  
-  button.weditor-collapsible {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/collapsible.svg");
-  }
-  
-  button.weditor-quote {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/quoteblock.svg");
-  }
-  
-  button.weditor-div {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/div.svg");
-  }
-  
-  /*  */
-  
-  button.weditor-footnote {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/footnote.svg");
-  }
-  
-  button.weditor-span {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/span.svg");
-  }
-  
-  button.weditor-extlink {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/external-link.svg");
-  }
-  
-  button.weditor-link {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/internal-link.svg");
-  }
-  
-  button.weditor-image {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/image.svg");
-  }
-  
-  /*  */
-  
-  button.weditor-hr {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/hr.svg");
-  }
-  
-  button.weditor-clearfloat {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/float-clear.svg");
-  }
-  
-  button.weditor-lines {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/lines.svg");
-  }
-  
-  /*  */
-  
-  button.weditor-tablewiz {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/table-wizard.svg");
-  }
-  
-  button.weditor-tabviewwiz {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/tabview-wizard.svg");
-  }
-  
-  button.weditor-pagelinkwiz {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/link-wizard.svg");
-  }
-  
-  button.weditor-imagewiz {
-    --editor-icon-image: url("/-/static/images/editor/mitten-icons/image-wizard.svg");
+  ${toolbarButtonGroups.map(buttonGroup => buttonGroup.entry
+    .filter(button => Boolean(button.iconPath))
+    .map(button => {
+      return css`
+        button.${button.className} {
+          --editor-icon-image: url(${button.iconPath || "/-/static/images/editor/mitten-icons/missing.svg"});
+        }
+      `;
+    }))
   }
 `;
 
