@@ -880,7 +880,6 @@ const MittenEditorToolbarPanel = styled(EditorToolbarPanel__Bare)`
   }
 
   ${toolbarButtonGroups.map(buttonGroup => buttonGroup.entry
-    .filter(button => Boolean(button.iconPath))
     .map(button => {
       return css`
         button.${button.className} {
